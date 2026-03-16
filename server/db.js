@@ -47,6 +47,21 @@ db.exec(`
     expires_at INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    plan TEXT NOT NULL,
+    amount REAL NOT NULL,
+    currency TEXT DEFAULT 'CNY',
+    payment_method TEXT,
+    payment_id TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at INTEGER NOT NULL,
+    paid_at INTEGER,
+    expires_at INTEGER,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
 `);
 
 // Export both direct db and getDb() for compatibility

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, MessageSquare, Users, ChevronRight, ShoppingBag, BookOpen, GraduationCap, MessageCircle, Code } from 'lucide-react';
+import { Mic, MessageSquare, Users, ChevronRight, ShoppingBag, BookOpen, GraduationCap, MessageCircle, Code, Heart, Sparkles } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { AppView, VoicePrint } from '../types';
 
@@ -159,6 +159,28 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
             </div>
             <p className="font-medium text-sm text-gray-900">{t('apidocs.title')}</p>
             <p className="text-[11px] text-gray-400 mt-0.5">{t('apidocs.description')}</p>
+          </button>
+
+          <button
+            onClick={() => onNavigate('voicebank')}
+            className="bg-white border border-gray-200 rounded-xl p-3 text-left active:bg-gray-50"
+          >
+            <div className="w-9 h-9 bg-rose-100 rounded-lg flex items-center justify-center mb-2">
+              <Heart className="h-5 w-5 text-rose-600" />
+            </div>
+            <p className="font-medium text-sm text-gray-900">{t('voicebank.title')}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t('voicebank.homeDescription')}</p>
+          </button>
+
+          <button
+            onClick={() => onNavigate('pricing')}
+            className="bg-white border border-gray-200 rounded-xl p-3 text-left active:bg-gray-50"
+          >
+            <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center mb-2">
+              <Sparkles className="h-5 w-5 text-amber-600" />
+            </div>
+            <p className="font-medium text-sm text-gray-900">{t('pricing.title')}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t('home.pricingDescription')}</p>
           </button>
         </div>
       </div>

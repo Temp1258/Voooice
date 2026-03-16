@@ -28,7 +28,7 @@ export interface SynthesisResult {
   duration: number;
 }
 
-export type AppView = 'home' | 'record' | 'voiceprints' | 'speak' | 'marketplace' | 'settings' | 'realtime' | 'training' | 'audiobook' | 'dialogue' | 'apidocs';
+export type AppView = 'home' | 'record' | 'voiceprints' | 'speak' | 'marketplace' | 'settings' | 'realtime' | 'training' | 'audiobook' | 'dialogue' | 'apidocs' | 'pricing' | 'voicebank';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'done' | 'error';
 
@@ -80,3 +80,51 @@ export interface SynthesisOptions {
   stability: number;
   similarity: number;
 }
+
+// Audiobook Workbench types
+export interface AudioBook {
+  id: string;
+  title: string;
+  author: string;
+  coverUrl?: string;
+  chapters: Chapter[];
+  roles: VoiceRole[];
+  defaultNarratorId: string;
+  createdAt: number;
+  updatedAt: number;
+  totalDuration: number;
+  status: 'draft' | 'synthesizing' | 'completed' | 'published';
+}
+
+export interface Chapter {
+  id: string;
+  title: string;
+  order: number;
+  rawText: string;
+  ssmlText?: string;
+  segments: ChapterSegment[];
+  bgmTrackUrl?: string;
+  status: 'pending' | 'synthesizing' | 'done' | 'error';
+}
+
+export interface ChapterSegment {
+  id: string;
+  text: string;
+  roleName: string;
+  emotion: EmotionType;
+  audioBlob?: Blob;
+  duration: number;
+  order: number;
+  status: 'pending' | 'synthesizing' | 'done' | 'error';
+}
+
+export interface VoiceRole {
+  id: string;
+  name: string;
+  voicePrintId: string;
+  defaultEmotion: EmotionType;
+  speedMultiplier: number;
+  color: string;
+}
+
+export type AudioExportFormat = 'wav' | 'mp3' | 'ogg';

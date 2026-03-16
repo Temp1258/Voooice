@@ -1,7 +1,9 @@
 // ---------------------------------------------------------------------------
 // voiceCloneService.ts – Abstract voice-cloning service layer with
-// ElevenLabs and Web Speech API implementations.
+// ElevenLabs, Web Speech API, and Local TTS implementations.
 // ---------------------------------------------------------------------------
+
+import { LocalTTSProvider } from './localTTSProvider';
 
 /** Options passed to every synthesis call. */
 export interface SynthesisOptions {
@@ -376,6 +378,14 @@ class VoiceCloneService {
   /** Return the key that was last set (if any). */
   getApiKey(): string | null {
     return this.apiKey;
+  }
+
+  /**
+   * Convenience helper – creates a LocalTTSProvider pointing at the given
+   * base URL (or the default) and sets it as the active provider.
+   */
+  setLocalProvider(baseUrl?: string): void {
+    this.provider = new LocalTTSProvider(baseUrl);
   }
 
   // -- proxied provider methods ---------------------------------------------

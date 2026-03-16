@@ -13,8 +13,9 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { voiceCloneService } from '../services/voiceCloneService';
 
-type VoiceProvider = 'elevenlabs' | 'azure' | 'browser';
+type VoiceProvider = 'elevenlabs' | 'azure' | 'browser' | 'local';
 type Locale = 'zh' | 'en';
 
 interface SettingsViewProps {
@@ -36,9 +37,47 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
   const totalStorage = 500; // MB
   const storagePercent = (usedStorage / totalStorage) * 100;
 
+  const [localUrl, setLocalUrl] = useState('http://localhost:8000');
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
+  const handleProviderChange = (newProvider: VoiceProvider) => {
+    setProvider(newProvider);
+    setConnectionStatus('idle');
+    setConnectionError(null);
+    if (newProvider === 'local') {
+      voiceCloneService.setLocalProvider(localUrl);
+    }
+  };
+
   const handleTestConnection = async () => {
+    if (provider === 'local') {
+      // Test local TTS server health endpoint
+      setTestingConnection(true);
+      setConnectionStatus('idle');
+      setConnectionError(null);
+      try {
+        const url = localUrl.replace(/\/+$/, '');
+        const res = await fetch(`${url}/v1/health`, { method: 'GET' });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        setConnectionStatus('success');
+        setConnectionError(
+          `Server OK – models: ${(data.models ?? []).join(', ') || 'none'}, GPU: ${data.gpu ? 'yes' : 'no'}`,
+        );
+        // Update provider with current URL
+        voiceCloneService.setLocalProvider(localUrl);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setConnectionStatus('error');
+        setConnectionError(msg);
+      } finally {
+        setTestingConnection(false);
+      }
+      return;
+    }
+
     if (!apiKey.trim()) {
       setConnectionStatus('error');
       setConnectionError(t('settings.enterApiKey'));
@@ -116,6 +155,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
     { value: 'elevenlabs', label: 'ElevenLabs' },
     { value: 'azure', label: 'Azure Speech' },
     { value: 'browser', label: t('settings.browserOffline') },
+    { value: 'local', label: t('settings.localTTS') },
   ];
 
   const ToggleSwitch = ({
@@ -224,7 +264,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
               {providerOptions.map((opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => setProvider(opt.value)}
+                  onClick={() => handleProviderChange(opt.value)}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
                     provider === opt.value
                       ? 'bg-indigo-600 text-white'
@@ -237,7 +277,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
             </div>
           </div>
 
-          {provider !== 'browser' && (
+          {provider !== 'browser' && provider !== 'local' && (
             <div className="px-4 py-3">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="w-8 h-8 bg-yellow-50 rounded-lg flex items-center justify-center">
@@ -254,6 +294,57 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
                     setConnectionStatus('idle');
                   }}
                   placeholder={t('settings.apiKeyPlaceholder')}
+                  className="flex-1 px-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={handleTestConnection}
+                  disabled={testingConnection}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    connectionStatus === 'success'
+                      ? 'bg-green-100 text-green-700'
+                      : connectionStatus === 'error'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-indigo-100 text-indigo-700 active:bg-indigo-200'
+                  }`}
+                >
+                  {testingConnection
+                    ? t('settings.testing')
+                    : connectionStatus === 'success'
+                      ? t('settings.connectionSuccess')
+                      : connectionStatus === 'error'
+                        ? t('settings.connectionFailed')
+                        : t('settings.testConnection')}
+                </button>
+              </div>
+              {connectionError && connectionStatus !== 'idle' && (
+                <p
+                  className={`text-xs mt-2 ${
+                    connectionStatus === 'success' ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {connectionError}
+                </p>
+              )}
+            </div>
+          )}
+
+          {provider === 'local' && (
+            <div className="px-4 py-3">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+                  <HardDrive className="h-4 w-4 text-orange-600" />
+                </div>
+                <span className="text-gray-900 text-sm font-medium">{t('settings.localTTS')}</span>
+              </div>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={localUrl}
+                  onChange={(e) => {
+                    setLocalUrl(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder="http://localhost:8000"
                   className="flex-1 px-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <button

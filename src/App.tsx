@@ -13,6 +13,9 @@ import { VoiceTrainingView } from './components/VoiceTrainingView';
 import { AudiobookView } from './components/AudiobookView';
 import { MultiRoleDialogueView } from './components/MultiRoleDialogueView';
 import { ApiDocsView } from './components/ApiDocsView';
+import { PricingView } from './components/PricingView';
+import { PaymentModal } from './components/PaymentModal';
+import { VoiceBankView } from './components/VoiceBankView';
 import { getAllVoicePrints } from './utils/storage';
 import { voiceCloneService } from './services/voiceCloneService';
 import { useI18n } from './i18n';
@@ -23,6 +26,12 @@ function App() {
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [voicePrints, setVoicePrints] = useState<VoicePrint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paymentModal, setPaymentModal] = useState<{
+    plan: string;
+    planName: string;
+    amount: number;
+    billingCycle: 'monthly' | 'yearly' | 'permanent';
+  } | null>(null);
 
   useEffect(() => {
     loadVoicePrints();
@@ -65,6 +74,8 @@ function App() {
     audiobook: t('audiobook.title'),
     dialogue: t('dialogue.title'),
     apidocs: t('apidocs.title'),
+    pricing: t('pricing.title'),
+    voicebank: t('voicebank.title'),
   };
 
   const showBackButton = currentView !== 'home';
@@ -161,6 +172,22 @@ function App() {
           {currentView === 'apidocs' && (
             <ApiDocsView />
           )}
+          {currentView === 'pricing' && (
+            <PricingView onSelectPlan={(plan) => {
+              const planInfo: Record<string, { name: string; amount: number; cycle: 'monthly' | 'yearly' | 'permanent' }> = {
+                creator: { name: t('pricing.creator'), amount: 29, cycle: 'monthly' },
+                voicebank: { name: t('pricing.voicebank'), amount: 99, cycle: 'yearly' },
+                studio: { name: t('pricing.studio'), amount: 299, cycle: 'monthly' },
+              };
+              const info = planInfo[plan];
+              if (info) {
+                setPaymentModal({ plan, planName: info.name, amount: info.amount, billingCycle: info.cycle });
+              }
+            }} />
+          )}
+          {currentView === 'voicebank' && (
+            <VoiceBankView voicePrints={voicePrints} onVoicePrintSaved={handleVoicePrintSaved} />
+          )}
         </main>
 
         {/* iOS-style tab bar */}
@@ -191,6 +218,18 @@ function App() {
           </div>
         </nav>
       </div>
+
+      {/* Payment Modal */}
+      {paymentModal && (
+        <PaymentModal
+          isOpen={true}
+          onClose={() => setPaymentModal(null)}
+          plan={paymentModal.plan}
+          planName={paymentModal.planName}
+          amount={paymentModal.amount}
+          billingCycle={paymentModal.billingCycle}
+        />
+      )}
     </ErrorBoundary>
   );
 }

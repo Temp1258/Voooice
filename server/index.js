@@ -6,6 +6,7 @@ const voiceprintRoutes = require('./routes/voiceprints');
 const synthesisRoutes = require('./routes/synthesis');
 const marketplaceRoutes = require('./routes/marketplace');
 const subscriptionRoutes = require('./routes/subscription');
+const paymentRoutes = require('./routes/payment');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,6 +30,7 @@ app.use('/api', voiceprintRoutes);
 app.use('/api', synthesisRoutes);
 app.use('/api', marketplaceRoutes);
 app.use('/api', subscriptionRoutes);
+app.use('/api', paymentRoutes);
 
 // 404 handler
 app.use((req, res) => {
