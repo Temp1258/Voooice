@@ -86,7 +86,7 @@ const zhCN: Record<string, string> = {
   'speak.synthesize': '开始合成',
   'speak.stop': '停止',
   'speak.playing': '正在播放...',
-  'speak.aboutCloningNote': '语音克隆基于你的声纹特征生成，效果取决于录制质量和文字内容。',
+  'speak.aboutCloningNote': '配置 ElevenLabs 或 Azure API Key（在设置页面）后可实现高保真声音克隆。未配置 API Key 时使用浏览器离线合成引擎。支持多语言、情感控制等高级功能。',
   'speak.emotionNeutral': '平静',
   'speak.emotionHappy': '开心',
   'speak.emotionSad': '悲伤',

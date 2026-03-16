@@ -86,7 +86,7 @@ const enUS: Record<string, string> = {
   'speak.synthesize': 'Synthesize',
   'speak.stop': 'Stop',
   'speak.playing': 'Playing...',
-  'speak.aboutCloningNote': 'Voice cloning is generated based on your voiceprint characteristics. Quality depends on the recording and text content.',
+  'speak.aboutCloningNote': 'Configure an ElevenLabs or Azure API Key (in Settings) for high-fidelity voice cloning. Without an API key, the browser offline synthesis engine is used. Supports multi-language, emotion controls, and other advanced features.',
   'speak.emotionNeutral': 'Neutral',
   'speak.emotionHappy': 'Happy',
   'speak.emotionSad': 'Sad',
