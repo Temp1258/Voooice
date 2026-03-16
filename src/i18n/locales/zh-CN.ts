@@ -36,6 +36,17 @@ const zhCN: Record<string, string> = {
   'home.instruction2': '2. 录制完成后保存为声纹档案',
   'home.instruction3': '3. 在「文字转语音」中选择声纹并输入文字',
   'home.instruction4': '4. 点击合成，即可听到模仿该声纹的语音',
+  'home.advancedFeatures': '高级功能',
+
+  // Advanced features
+  'training.title': '声纹训练',
+  'training.description': '多段录制更精准',
+  'audiobook.title': '有声读物',
+  'audiobook.description': '长文本分段合成',
+  'dialogue.title': '多角色对话',
+  'dialogue.description': '创建对话场景',
+  'apidocs.title': '开放 API',
+  'apidocs.description': '集成到你的应用',
 
   // Record page
   'record.title': '录制声音',
