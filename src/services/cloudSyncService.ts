@@ -1,5 +1,6 @@
 import type { VoicePrint, CloudSyncStatus } from '../types';
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { API_BASE_URL } from '../config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,8 +17,8 @@ export interface SyncResult {
 // Cloud sync service
 // ---------------------------------------------------------------------------
 
-const VOICEPRINTS_API = '/api/voiceprints';
-const AUDIO_API = '/api/audio';
+const VOICEPRINTS_API = `${API_BASE_URL}/api/voiceprints`;
+const AUDIO_API = `${API_BASE_URL}/api/audio`;
 
 export class CloudSyncService {
   /**

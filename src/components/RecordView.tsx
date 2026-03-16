@@ -4,7 +4,9 @@ import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { WaveformVisualizer } from './WaveformVisualizer';
 import { FrequencyProfile } from './FrequencyProfile';
 import { extractFrequencyProfile, estimateAveragePitch, audioBufferToBlob } from '../utils/audioAnalyzer';
-import { saveVoicePrint } from '../utils/storage';
+import { saveVoicePrint, updateVoicePrint } from '../utils/storage';
+import { voiceCloneService } from '../services/voiceCloneService';
+import { useI18n } from '../i18n';
 import type { VoicePrint } from '../types';
 
 interface RecordViewProps {
@@ -12,6 +14,7 @@ interface RecordViewProps {
 }
 
 export function RecordView({ onSaved }: RecordViewProps) {
+  const { t } = useI18n();
   const {
     state,
     duration,
@@ -27,6 +30,8 @@ export function RecordView({ onSaved }: RecordViewProps) {
   const [saving, setSaving] = useState(false);
   const [frequencyProfile, setFrequencyProfile] = useState<number[]>([]);
   const [averagePitch, setAveragePitch] = useState(0);
+  const [cloudUploadStatus, setCloudUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [cloudUploadError, setCloudUploadError] = useState<string | null>(null);
 
   const formatDuration = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -53,6 +58,9 @@ export function RecordView({ onSaved }: RecordViewProps) {
     if (!audioBuffer || !name.trim()) return;
 
     setSaving(true);
+    setCloudUploadStatus('idle');
+    setCloudUploadError(null);
+
     try {
       const audioBlob = audioBufferToBlob(audioBuffer);
       const voiceprint: VoicePrint = {
@@ -66,7 +74,28 @@ export function RecordView({ onSaved }: RecordViewProps) {
         language: 'zh-CN',
       };
 
+      // Save locally first
       await saveVoicePrint(voiceprint, audioBlob);
+
+      // If an API key is configured, upload to ElevenLabs to get a cloudVoiceId
+      const apiKey = voiceCloneService.getApiKey();
+      if (apiKey) {
+        setCloudUploadStatus('uploading');
+        try {
+          const cloudVoiceId = await voiceCloneService.cloneVoice(audioBlob, voiceprint.name);
+          // Persist the cloudVoiceId back to IndexedDB
+          await updateVoicePrint(voiceprint.id, { cloudVoiceId });
+          voiceprint.cloudVoiceId = cloudVoiceId;
+          setCloudUploadStatus('success');
+        } catch (uploadErr: unknown) {
+          const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+          console.error('Cloud voice clone failed:', msg);
+          setCloudUploadError(msg);
+          setCloudUploadStatus('error');
+          // Local save succeeded, so we still call onSaved
+        }
+      }
+
       onSaved(voiceprint);
     } catch (err) {
       console.error('Failed to save voiceprint:', err);
@@ -80,14 +109,16 @@ export function RecordView({ onSaved }: RecordViewProps) {
     setName('');
     setFrequencyProfile([]);
     setAveragePitch(0);
+    setCloudUploadStatus('idle');
+    setCloudUploadError(null);
   };
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-xl font-bold text-gray-900 mb-1">录制声音</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">{t('record.title')}</h2>
         <p className="text-gray-500 text-sm">
-          请朗读一段文字，建议录制 10-30 秒以获得最佳效果
+          {t('record.description')}
         </p>
       </div>
 
@@ -137,11 +168,11 @@ export function RecordView({ onSaved }: RecordViewProps) {
             {formatDuration(duration)}
           </span>
           <p className="text-sm text-gray-400 mt-1">
-            {state === 'idle' && '准备录制'}
-            {state === 'recording' && '正在录制...'}
-            {state === 'processing' && '正在分析声纹...'}
-            {state === 'done' && '录制完成'}
-            {state === 'error' && '录制失败'}
+            {state === 'idle' && t('record.stateReady')}
+            {state === 'recording' && t('record.stateRecording')}
+            {state === 'processing' && t('record.stateProcessing')}
+            {state === 'done' && t('record.stateDone')}
+            {state === 'error' && t('record.stateError')}
           </p>
         </div>
 
@@ -179,16 +210,16 @@ export function RecordView({ onSaved }: RecordViewProps) {
         <div className="space-y-4">
           {/* Voice analysis */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-            <h3 className="font-semibold text-gray-900 mb-3">声纹分析</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">{t('record.analysisTitle')}</h3>
 
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="bg-indigo-50 rounded-xl p-3 text-center">
                 <p className="text-2xl font-bold text-indigo-600">{averagePitch} Hz</p>
-                <p className="text-xs text-indigo-400">平均音高</p>
+                <p className="text-xs text-indigo-400">{t('record.averagePitch')}</p>
               </div>
               <div className="bg-purple-50 rounded-xl p-3 text-center">
                 <p className="text-2xl font-bold text-purple-600">{duration}s</p>
-                <p className="text-xs text-purple-400">录制时长</p>
+                <p className="text-xs text-purple-400">{t('record.duration')}</p>
               </div>
             </div>
 
@@ -196,18 +227,18 @@ export function RecordView({ onSaved }: RecordViewProps) {
               profile={frequencyProfile}
               color="#6366f1"
               height={50}
-              label="频率特征"
+              label={t('record.frequencyProfile')}
             />
           </div>
 
           {/* Save form */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-            <h3 className="font-semibold text-gray-900 mb-3">保存声纹</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">{t('record.saveVoiceprint')}</h3>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="为这个声纹起个名字（如：我的声音）"
+              placeholder={t('record.namePlaceholder')}
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               maxLength={30}
             />
@@ -217,8 +248,24 @@ export function RecordView({ onSaved }: RecordViewProps) {
               className="w-full mt-3 bg-indigo-600 text-white rounded-xl py-3 font-semibold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed active:bg-indigo-700 transition-colors"
             >
               <Save className="h-5 w-5" />
-              <span>{saving ? '保存中...' : '保存声纹'}</span>
+              <span>
+                {saving
+                  ? cloudUploadStatus === 'uploading'
+                    ? t('record.uploadingToCloud')
+                    : t('record.saving')
+                  : t('record.saveVoiceprint')}
+              </span>
             </button>
+            {cloudUploadStatus === 'success' && (
+              <p className="text-xs text-green-600 mt-2 text-center">
+                {t('record.cloudSyncSuccess')}
+              </p>
+            )}
+            {cloudUploadStatus === 'error' && cloudUploadError && (
+              <p className="text-xs text-amber-600 mt-2 text-center">
+                {t('record.localSaveSuccessCloudFailed')}: {cloudUploadError}
+              </p>
+            )}
           </div>
         </div>
       )}

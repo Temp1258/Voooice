@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import type { RecordingState } from '../types';
+import { PCMCollector } from '../utils/wavEncoder';
 
 interface UseAudioRecorderReturn {
   state: RecordingState;
@@ -10,6 +11,33 @@ interface UseAudioRecorderReturn {
   stopRecording: () => void;
   reset: () => void;
   error: string | null;
+}
+
+/**
+ * Detect the best supported MIME type for MediaRecorder.
+ *
+ * Priority:
+ *   1. audio/mp4           — best iOS Safari support
+ *   2. audio/webm;codecs=opus — best Chrome / Firefox support
+ *   3. audio/webm          — generic WebM
+ *   4. null                — no MediaRecorder support; use WAV fallback
+ */
+function getSupportedMimeType(): string | null {
+  if (typeof MediaRecorder === 'undefined') return null;
+
+  const candidates = [
+    'audio/mp4',
+    'audio/webm;codecs=opus',
+    'audio/webm',
+  ];
+
+  for (const mime of candidates) {
+    if (MediaRecorder.isTypeSupported(mime)) {
+      return mime;
+    }
+  }
+
+  return null;
 }
 
 export function useAudioRecorder(): UseAudioRecorderReturn {
@@ -24,12 +52,43 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const pcmCollectorRef = useRef<PCMCollector | null>(null);
+  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  /** Clean up timer, stream tracks, and processor nodes */
+  const cleanup = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (scriptProcessorRef.current) {
+      scriptProcessorRef.current.disconnect();
+      scriptProcessorRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Decode a recorded Blob into an AudioBuffer.
+   */
+  const decodeBlob = useCallback(
+    async (blob: Blob, audioContext: AudioContext): Promise<AudioBuffer> => {
+      const arrayBuffer = await blob.arrayBuffer();
+      return audioContext.decodeAudioData(arrayBuffer);
+    },
+    []
+  );
 
   const startRecording = useCallback(async () => {
     try {
       setError(null);
       setState('recording');
       chunksRef.current = [];
+      pcmCollectorRef.current = null;
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -38,6 +97,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
           sampleRate: 44100,
         },
       });
+      streamRef.current = stream;
 
       const audioContext = new AudioContext({ sampleRate: 44100 });
       audioContextRef.current = audioContext;
@@ -49,43 +109,60 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       source.connect(analyser);
       setAnalyserNode(analyser);
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
-      });
+      const mimeType = getSupportedMimeType();
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
-      };
+      if (mimeType) {
+        // ── MediaRecorder path (mp4 / webm) ──────────────────────────
+        const mediaRecorder = new MediaRecorder(stream, { mimeType });
 
-      mediaRecorder.onstop = async () => {
-        setState('processing');
-        stream.getTracks().forEach(track => track.stop());
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunksRef.current.push(event.data);
+          }
+        };
 
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
+        mediaRecorder.onstop = async () => {
+          setState('processing');
+          cleanup();
 
-        try {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-          const arrayBuffer = await blob.arrayBuffer();
-          const decoded = await audioContext.decodeAudioData(arrayBuffer);
-          setAudioBuffer(decoded);
-          setState('done');
-        } catch (err) {
-          console.error('Failed to decode audio:', err);
-          setError('音频解码失败，请重试');
-          setState('error');
-        }
-      };
+          try {
+            const blob = new Blob(chunksRef.current, { type: mimeType });
+            const decoded = await decodeBlob(blob, audioContext);
+            setAudioBuffer(decoded);
+            setState('done');
+          } catch (err) {
+            console.error('Failed to decode audio:', err);
+            setError('音频解码失败，请重试');
+            setState('error');
+          }
+        };
 
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(100); // Collect data every 100ms
+        mediaRecorderRef.current = mediaRecorder;
+        mediaRecorder.start(100); // Collect data every 100ms
+      } else {
+        // ── WAV fallback via ScriptProcessor (no MediaRecorder support) ──
+        const collector = new PCMCollector(audioContext.sampleRate);
+        pcmCollectorRef.current = collector;
 
+        const bufferSize = 4096;
+        const scriptProcessor = audioContext.createScriptProcessor(
+          bufferSize,
+          1,
+          1
+        );
+        scriptProcessorRef.current = scriptProcessor;
+
+        scriptProcessor.onaudioprocess = (event) => {
+          const inputData = event.inputBuffer.getChannelData(0);
+          collector.addChunk(inputData);
+        };
+
+        // Connect: source -> analyser -> scriptProcessor -> destination
+        analyser.connect(scriptProcessor);
+        scriptProcessor.connect(audioContext.destination);
+      }
+
+      // Duration timer
       startTimeRef.current = Date.now();
       timerRef.current = window.setInterval(() => {
         setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
@@ -101,13 +178,47 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       }
       setState('error');
     }
-  }, []);
+  }, [cleanup, decodeBlob]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+    // MediaRecorder path
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== 'inactive'
+    ) {
       mediaRecorderRef.current.stop();
+      return;
     }
-  }, []);
+
+    // WAV fallback path
+    if (pcmCollectorRef.current && audioContextRef.current) {
+      setState('processing');
+      cleanup();
+
+      try {
+        const wavBlob = pcmCollectorRef.current.toWAVBlob();
+        const audioContext = audioContextRef.current;
+
+        // Decode the WAV blob into an AudioBuffer
+        wavBlob
+          .arrayBuffer()
+          .then((buf) => audioContext.decodeAudioData(buf))
+          .then((decoded) => {
+            setAudioBuffer(decoded);
+            setState('done');
+          })
+          .catch((err) => {
+            console.error('Failed to decode WAV audio:', err);
+            setError('音频解码失败，请重试');
+            setState('error');
+          });
+      } catch (err) {
+        console.error('WAV encoding failed:', err);
+        setError('音频编码失败，请重试');
+        setState('error');
+      }
+    }
+  }, [cleanup]);
 
   const reset = useCallback(() => {
     setState('idle');
@@ -115,10 +226,10 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     setAudioBuffer(null);
     setAnalyserNode(null);
     setError(null);
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-  }, []);
+    cleanup();
+    pcmCollectorRef.current = null;
+    mediaRecorderRef.current = null;
+  }, [cleanup]);
 
   return {
     state,

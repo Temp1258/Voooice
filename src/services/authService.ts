@@ -93,7 +93,9 @@ function clearStoredAuth(): void {
 // Cloud auth provider (calls REST API)
 // ---------------------------------------------------------------------------
 
-const API_BASE = '/api/auth';
+import { API_BASE_URL } from '../config';
+
+const API_BASE = `${API_BASE_URL}/api/auth`;
 
 export class CloudAuthProvider implements AuthProviderInterface {
   async login(email: string, password: string): Promise<AuthResult> {

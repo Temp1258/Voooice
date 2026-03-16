@@ -1,0 +1,214 @@
+const express = require('express');
+const router = express.Router();
+const { getDb } = require('../db');
+const { authMiddleware } = require('../middleware/auth');
+
+// Plan definitions
+const PLANS = {
+  free: {
+    name: 'Free',
+    dailySynthesisLimit: 10,
+    dailyCharacterLimit: 1000,
+    maxVoiceprints: 3,
+    cloudSynthesis: false,
+    price: 0,
+  },
+  pro: {
+    name: 'Pro',
+    dailySynthesisLimit: 1000,
+    dailyCharacterLimit: 100000,
+    maxVoiceprints: -1, // unlimited
+    cloudSynthesis: true,
+    price: 29.9,
+  },
+  enterprise: {
+    name: 'Enterprise',
+    dailySynthesisLimit: -1, // unlimited
+    dailyCharacterLimit: -1,
+    maxVoiceprints: -1,
+    cloudSynthesis: true,
+    price: 99.9,
+  },
+};
+
+// Ensure quota tables exist
+function ensureQuotaTables() {
+  const db = getDb();
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS usage_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      characters INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      user_id TEXT PRIMARY KEY,
+      plan TEXT DEFAULT 'free',
+      started_at INTEGER NOT NULL,
+      expires_at INTEGER,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+}
+
+ensureQuotaTables();
+
+// Get current plan and usage
+router.get('/subscription', authMiddleware, (req, res) => {
+  try {
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const subscription = db.prepare('SELECT * FROM subscriptions WHERE user_id = ?').get(req.user.id);
+    const plan = subscription?.plan || user.plan || 'free';
+    const planDetails = PLANS[plan] || PLANS.free;
+
+    // Get today's usage
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayUsage = db.prepare(`
+      SELECT
+        COUNT(*) as synthesis_count,
+        COALESCE(SUM(characters), 0) as total_characters
+      FROM usage_log
+      WHERE user_id = ? AND action = 'synthesis' AND created_at >= ?
+    `).get(req.user.id, todayStart.getTime());
+
+    res.json({
+      plan,
+      planDetails,
+      usage: {
+        synthesisCount: todayUsage.synthesis_count,
+        characterCount: todayUsage.total_characters,
+        synthesisLimit: planDetails.dailySynthesisLimit,
+        characterLimit: planDetails.dailyCharacterLimit,
+      },
+      subscription: subscription ? {
+        startedAt: subscription.started_at,
+        expiresAt: subscription.expires_at,
+      } : null,
+    });
+  } catch (err) {
+    console.error('Get subscription error:', err);
+    res.status(500).json({ error: 'Failed to get subscription' });
+  }
+});
+
+// Check quota before synthesis (middleware-style helper)
+router.post('/subscription/check-quota', authMiddleware, (req, res) => {
+  try {
+    const db = getDb();
+    const { characters = 0 } = req.body;
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const subscription = db.prepare('SELECT * FROM subscriptions WHERE user_id = ?').get(req.user.id);
+    const plan = subscription?.plan || user?.plan || 'free';
+    const planDetails = PLANS[plan] || PLANS.free;
+
+    // Check if subscription expired
+    if (subscription?.expires_at && subscription.expires_at < Date.now()) {
+      // Downgrade to free
+      db.prepare('UPDATE subscriptions SET plan = ? WHERE user_id = ?').run('free', req.user.id);
+      return res.json({
+        allowed: false,
+        reason: 'Subscription expired, downgraded to free plan',
+      });
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayUsage = db.prepare(`
+      SELECT
+        COUNT(*) as synthesis_count,
+        COALESCE(SUM(characters), 0) as total_characters
+      FROM usage_log
+      WHERE user_id = ? AND action = 'synthesis' AND created_at >= ?
+    `).get(req.user.id, todayStart.getTime());
+
+    // Check synthesis count limit
+    if (planDetails.dailySynthesisLimit >= 0 && todayUsage.synthesis_count >= planDetails.dailySynthesisLimit) {
+      return res.json({
+        allowed: false,
+        reason: `Daily synthesis limit reached (${planDetails.dailySynthesisLimit} per day)`,
+      });
+    }
+
+    // Check character limit
+    if (planDetails.dailyCharacterLimit >= 0 && (todayUsage.total_characters + characters) > planDetails.dailyCharacterLimit) {
+      return res.json({
+        allowed: false,
+        reason: `Daily character limit reached (${planDetails.dailyCharacterLimit} characters per day)`,
+      });
+    }
+
+    res.json({ allowed: true });
+  } catch (err) {
+    console.error('Check quota error:', err);
+    res.status(500).json({ error: 'Failed to check quota' });
+  }
+});
+
+// Record usage
+router.post('/subscription/record-usage', authMiddleware, (req, res) => {
+  try {
+    const db = getDb();
+    const { action = 'synthesis', characters = 0 } = req.body;
+
+    db.prepare('INSERT INTO usage_log (user_id, action, characters, created_at) VALUES (?, ?, ?, ?)')
+      .run(req.user.id, action, characters, Date.now());
+
+    // Update user's used_quota
+    db.prepare('UPDATE users SET used_quota = used_quota + 1 WHERE id = ?').run(req.user.id);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Record usage error:', err);
+    res.status(500).json({ error: 'Failed to record usage' });
+  }
+});
+
+// Upgrade plan (simulated — in production this would connect to App Store / Stripe)
+router.post('/subscription/upgrade', authMiddleware, (req, res) => {
+  try {
+    const db = getDb();
+    const { plan, receipt } = req.body;
+
+    if (!PLANS[plan]) {
+      return res.status(400).json({ error: 'Invalid plan' });
+    }
+
+    // In production: verify Apple/Stripe receipt here
+    // For now, just update the plan
+    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+
+    db.prepare(`
+      INSERT INTO subscriptions (user_id, plan, started_at, expires_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET plan = excluded.plan, started_at = excluded.started_at, expires_at = excluded.expires_at
+    `).run(req.user.id, plan, Date.now(), expiresAt);
+
+    db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(plan, req.user.id);
+
+    res.json({
+      success: true,
+      plan,
+      expiresAt,
+    });
+  } catch (err) {
+    console.error('Upgrade plan error:', err);
+    res.status(500).json({ error: 'Failed to upgrade plan' });
+  }
+});
+
+// Get available plans
+router.get('/subscription/plans', (req, res) => {
+  res.json({ plans: PLANS });
+});
+
+module.exports = router;

@@ -3,6 +3,7 @@ import { Trash2, Play, Clock, Activity } from 'lucide-react';
 import { FrequencyProfile } from './FrequencyProfile';
 import { deleteVoicePrint as deleteVP, getAudioBlob } from '../utils/storage';
 import { blobToAudioBuffer } from '../utils/audioAnalyzer';
+import { useI18n } from '../i18n';
 import type { VoicePrint } from '../types';
 
 interface VoicePrintsViewProps {
@@ -11,6 +12,7 @@ interface VoicePrintsViewProps {
 }
 
 export function VoicePrintsView({ voicePrints, onDeleted }: VoicePrintsViewProps) {
+  const { t } = useI18n();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -51,7 +53,7 @@ export function VoicePrintsView({ voicePrints, onDeleted }: VoicePrintsViewProps
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这个声纹吗？')) return;
+    if (!confirm(t('voiceprints.deleteConfirm'))) return;
     try {
       await deleteVP(id);
       onDeleted(id);
@@ -64,8 +66,8 @@ export function VoicePrintsView({ voicePrints, onDeleted }: VoicePrintsViewProps
     return (
       <div className="text-center py-16">
         <Activity className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-500">暂无声纹档案</h3>
-        <p className="text-gray-400 text-sm mt-1">录制声音后，声纹档案将显示在这里</p>
+        <h3 className="text-lg font-semibold text-gray-500">{t('voiceprints.emptyTitle')}</h3>
+        <p className="text-gray-400 text-sm mt-1">{t('voiceprints.emptyState')}</p>
       </div>
     );
   }
@@ -73,8 +75,8 @@ export function VoicePrintsView({ voicePrints, onDeleted }: VoicePrintsViewProps
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900">声纹档案</h2>
-        <span className="text-sm text-gray-400">{voicePrints.length} 个声纹</span>
+        <h2 className="text-xl font-bold text-gray-900">{t('voiceprints.title')}</h2>
+        <span className="text-sm text-gray-400">{t('voiceprints.count', { count: String(voicePrints.length) })}</span>
       </div>
 
       {voicePrints.map((vp) => (
@@ -138,7 +140,7 @@ export function VoicePrintsView({ voicePrints, onDeleted }: VoicePrintsViewProps
                 profile={vp.frequencyProfile}
                 color="#6366f1"
                 height={40}
-                label="频率特征"
+                label={t('record.frequencyProfile')}
               />
             </div>
           )}

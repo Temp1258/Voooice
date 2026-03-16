@@ -1,22 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { Volume2, AlertCircle, ChevronDown, Activity, Smile, Frown, Zap, Heart, Wind, Minus } from 'lucide-react';
+import { Volume2, AlertCircle, ChevronDown, Activity, Smile, Frown, Zap, Heart, Wind, Minus, Download, Share2 } from 'lucide-react';
 import { getAudioBlob } from '../utils/storage';
 import { blobToAudioBuffer } from '../utils/audioAnalyzer';
 import { voiceCloneService } from '../services/voiceCloneService';
+import { downloadBlob, shareAudio } from '../utils/audioExport';
+import { useI18n } from '../i18n';
 import type { VoicePrint, SpeakingState, EmotionType } from '../types';
 
 interface SpeakViewProps {
   voicePrints: VoicePrint[];
 }
-
-const EMOTIONS: { value: EmotionType; label: string; icon: React.ReactNode }[] = [
-  { value: 'neutral', label: '中性', icon: <Minus className="h-4 w-4" /> },
-  { value: 'happy', label: '开心', icon: <Smile className="h-4 w-4" /> },
-  { value: 'sad', label: '悲伤', icon: <Frown className="h-4 w-4" /> },
-  { value: 'excited', label: '激动', icon: <Zap className="h-4 w-4" /> },
-  { value: 'calm', label: '温柔', icon: <Heart className="h-4 w-4" /> },
-  { value: 'angry', label: '愤怒', icon: <Wind className="h-4 w-4" /> },
-];
 
 const LANGUAGES = [
   { code: 'zh-CN', label: '中文' },
@@ -26,6 +19,16 @@ const LANGUAGES = [
 ];
 
 export function SpeakView({ voicePrints }: SpeakViewProps) {
+  const { t } = useI18n();
+
+  const EMOTIONS: { value: EmotionType; label: string; icon: React.ReactNode }[] = [
+    { value: 'neutral', label: t('speak.emotionNeutral'), icon: <Minus className="h-4 w-4" /> },
+    { value: 'happy', label: t('speak.emotionHappy'), icon: <Smile className="h-4 w-4" /> },
+    { value: 'sad', label: t('speak.emotionSad'), icon: <Frown className="h-4 w-4" /> },
+    { value: 'excited', label: t('speak.emotionExcited'), icon: <Zap className="h-4 w-4" /> },
+    { value: 'calm', label: t('speak.emotionCalm'), icon: <Heart className="h-4 w-4" /> },
+    { value: 'angry', label: t('speak.emotionAngry'), icon: <Wind className="h-4 w-4" /> },
+  ];
   const [selectedVPId, setSelectedVPId] = useState<string>(voicePrints[0]?.id || '');
   const [text, setText] = useState('');
   const [speakingState, setSpeakingState] = useState<SpeakingState>('idle');
@@ -36,6 +39,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
   const [speed, setSpeed] = useState(1.0);
   const [stability, setStability] = useState(0.5);
   const [similarity, setSimilarity] = useState(0.75);
+  const [lastSynthesizedBlob, setLastSynthesizedBlob] = useState<Blob | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
@@ -57,6 +61,8 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
         stability,
         similarity,
       });
+
+      setLastSynthesizedBlob(audioBlob);
 
       // If the blob has data, play it directly
       if (audioBlob.size > 0) {
@@ -86,7 +92,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
       }
     } catch (err: any) {
       console.error('Synthesis failed:', err);
-      setError('语音合成失败: ' + (err.message || '未知错误'));
+      setError(t('error.synthesisFailed') + ': ' + (err.message || t('error.unknown')));
       setSpeakingState('error');
     }
   };
@@ -122,8 +128,8 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
     return (
       <div className="text-center py-16">
         <Volume2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-500">暂无可用声纹</h3>
-        <p className="text-gray-400 text-sm mt-1">请先录制声音并保存声纹</p>
+        <h3 className="text-lg font-semibold text-gray-500">{t('speak.noVoiceprints')}</h3>
+        <p className="text-gray-400 text-sm mt-1">{t('speak.noVoiceprintsHint')}</p>
       </div>
     );
   }
@@ -131,8 +137,8 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
   return (
     <div className="space-y-5">
       <div className="text-center">
-        <h2 className="text-xl font-bold text-gray-900 mb-1">文字转语音</h2>
-        <p className="text-gray-500 text-sm">选择声纹，输入文字，生成语音</p>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">{t('speak.title')}</h2>
+        <p className="text-gray-500 text-sm">{t('speak.description')}</p>
       </div>
 
       {error && (
@@ -144,7 +150,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
 
       {/* Voice selection */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-        <label className="text-sm font-medium text-gray-700 mb-2 block" id="voice-select-label">选择声纹</label>
+        <label className="text-sm font-medium text-gray-700 mb-2 block" id="voice-select-label">{t('speak.selectVoice')}</label>
         <div className="relative">
           <button
             onClick={() => setShowDropdown(!showDropdown)}
@@ -162,7 +168,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
                 </div>
               </div>
             ) : (
-              <span className="text-gray-400">请选择声纹</span>
+              <span className="text-gray-400">{t('speak.selectVoice')}</span>
             )}
             <ChevronDown className="h-5 w-5 text-gray-400" />
           </button>
@@ -196,17 +202,17 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
           <button
             onClick={handlePlayOriginal}
             className="mt-3 text-sm text-indigo-600 flex items-center space-x-1 active:text-indigo-800"
-            aria-label="试听原始录音"
+            aria-label={t('speak.previewOriginal')}
           >
             <Volume2 className="h-4 w-4" />
-            <span>试听原始录音</span>
+            <span>{t('speak.previewOriginal')}</span>
           </button>
         )}
       </div>
 
       {/* Emotion selection */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-        <label className="text-sm font-medium text-gray-700 mb-3 block">情感语气</label>
+        <label className="text-sm font-medium text-gray-700 mb-3 block">{t('speak.emotionLabel')}</label>
         <div className="grid grid-cols-3 gap-2">
           {EMOTIONS.map(({ value, label, icon }) => (
             <button
@@ -229,7 +235,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
       {/* Language & Speed */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 space-y-4">
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block" htmlFor="lang-select">合成语言</label>
+          <label className="text-sm font-medium text-gray-700 mb-1 block" htmlFor="lang-select">{t('speak.languageSelection')}</label>
           <select
             id="lang-select"
             value={language}
@@ -243,7 +249,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
         </div>
         <div>
           <div className="flex justify-between items-center mb-1">
-            <label className="text-sm font-medium text-gray-700" htmlFor="speed-range">语速</label>
+            <label className="text-sm font-medium text-gray-700" htmlFor="speed-range">{t('speak.speed')}</label>
             <span className="text-xs text-gray-400">{speed.toFixed(1)}x</span>
           </div>
           <input
@@ -259,7 +265,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
         </div>
         <div>
           <div className="flex justify-between items-center mb-1">
-            <label className="text-sm font-medium text-gray-700" htmlFor="stability-range">稳定性</label>
+            <label className="text-sm font-medium text-gray-700" htmlFor="stability-range">{t('speak.stability')}</label>
             <span className="text-xs text-gray-400">{(stability * 100).toFixed(0)}%</span>
           </div>
           <input
@@ -275,7 +281,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
         </div>
         <div>
           <div className="flex justify-between items-center mb-1">
-            <label className="text-sm font-medium text-gray-700" htmlFor="similarity-range">相似度</label>
+            <label className="text-sm font-medium text-gray-700" htmlFor="similarity-range">{t('speak.similarity')}</label>
             <span className="text-xs text-gray-400">{(similarity * 100).toFixed(0)}%</span>
           </div>
           <input
@@ -293,12 +299,12 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
 
       {/* Text input */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-        <label className="text-sm font-medium text-gray-700 mb-2 block" htmlFor="tts-text">输入文字</label>
+        <label className="text-sm font-medium text-gray-700 mb-2 block" htmlFor="tts-text">{t('speak.inputText')}</label>
         <textarea
           id="tts-text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="请输入要转换为语音的文字..."
+          placeholder={t('speak.placeholder')}
           className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
           rows={4}
           maxLength={500}
@@ -313,28 +319,53 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
         <button
           onClick={handleStop}
           className="w-full bg-red-500 text-white rounded-xl py-4 font-semibold flex items-center justify-center space-x-2 active:bg-red-600 transition-colors"
-          aria-label="停止播放"
+          aria-label={t('speak.stop')}
         >
           <Volume2 className="h-5 w-5 animate-pulse" />
-          <span>{speakingState === 'synthesizing' ? '正在合成...' : '正在播放...点击停止'}</span>
+          <span>{speakingState === 'synthesizing' ? t('speak.synthesizing') : t('speak.playingClickStop')}</span>
         </button>
       ) : (
         <button
           onClick={handleSynthesize}
           disabled={!text.trim() || !selectedVPId}
           className="w-full bg-indigo-600 text-white rounded-xl py-4 font-semibold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed active:bg-indigo-700 transition-colors"
-          aria-label="合成语音"
+          aria-label={t('speak.synthesize')}
         >
           <Volume2 className="h-5 w-5" />
-          <span>合成语音</span>
+          <span>{t('speak.synthesize')}</span>
         </button>
       )}
 
+      {/* Export / Share buttons */}
+      {lastSynthesizedBlob && lastSynthesizedBlob.size > 0 && speakingState === 'idle' && (
+        <div className="flex space-x-3">
+          <button
+            onClick={() => {
+              const timestamp = new Date().toISOString().slice(0, 10);
+              downloadBlob(lastSynthesizedBlob, `VocalText_${timestamp}.wav`);
+            }}
+            className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center space-x-1.5 active:bg-gray-200"
+          >
+            <Download className="h-4 w-4" />
+            <span>{t('common.export')}</span>
+          </button>
+          <button
+            onClick={() => {
+              const timestamp = new Date().toISOString().slice(0, 10);
+              shareAudio(lastSynthesizedBlob, `VocalText_${timestamp}.wav`, selectedVP?.name || 'VocalText');
+            }}
+            className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center space-x-1.5 active:bg-gray-200"
+          >
+            <Share2 className="h-4 w-4" />
+            <span>{t('common.share')}</span>
+          </button>
+        </div>
+      )}
+
       <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-700">
-        <p className="font-medium mb-1">关于声音克隆</p>
+        <p className="font-medium mb-1">{t('speak.aboutCloningTitle')}</p>
         <p>
-          配置 ElevenLabs 或 Azure API Key（在设置页面）后可实现高保真声音克隆。
-          未配置 API Key 时使用浏览器离线合成引擎。支持多语言、情感控制等高级功能。
+          {t('speak.aboutCloningNote')}
         </p>
       </div>
     </div>

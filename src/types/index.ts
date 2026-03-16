@@ -28,7 +28,7 @@ export interface SynthesisResult {
   duration: number;
 }
 
-export type AppView = 'home' | 'record' | 'voiceprints' | 'speak' | 'marketplace' | 'settings';
+export type AppView = 'home' | 'record' | 'voiceprints' | 'speak' | 'marketplace' | 'settings' | 'realtime' | 'training' | 'audiobook' | 'dialogue' | 'apidocs';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'done' | 'error';
 

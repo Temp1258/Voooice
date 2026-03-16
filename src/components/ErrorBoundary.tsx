@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
+import { t as standaloneT, type Locale } from '../i18n';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -32,6 +33,18 @@ export class ErrorBoundary extends React.Component<
     // errorTrackingService.captureException(error, { extra: errorInfo });
   }
 
+  private getLocale(): Locale {
+    try {
+      const stored = localStorage.getItem('vocaltext-locale');
+      if (stored === 'zh-CN' || stored === 'en-US') return stored;
+    } catch {}
+    return 'zh-CN';
+  }
+
+  private t = (key: string, params?: Record<string, string>): string => {
+    return standaloneT(this.getLocale(), key, params);
+  };
+
   handleReset = () => {
     this.setState({ hasError: false, error: null });
   };
@@ -52,18 +65,18 @@ export class ErrorBoundary extends React.Component<
             </div>
 
             {/* Title */}
-            <h2 className="text-xl font-bold text-gray-900 mb-2">出了点问题</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{this.t('error.title')}</h2>
 
             {/* Error message */}
             <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-              {this.state.error?.message || '应用遇到了一个意外错误，请尝试重试或返回首页。'}
+              {this.state.error?.message || this.t('error.defaultMessage')}
             </p>
 
             {/* Error details (collapsed in production) */}
             {this.state.error && (
               <details className="mb-6 text-left">
                 <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-500">
-                  查看错误详情
+                  {this.t('error.viewDetails')}
                 </summary>
                 <pre className="mt-2 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 overflow-auto max-h-32">
                   {this.state.error.stack}
@@ -78,7 +91,7 @@ export class ErrorBoundary extends React.Component<
                 className="w-full bg-indigo-600 text-white rounded-xl py-3 font-semibold flex items-center justify-center space-x-2 active:bg-indigo-700 transition-colors"
               >
                 <RotateCcw className="h-5 w-5" />
-                <span>重试</span>
+                <span>{this.t('common.retry')}</span>
               </button>
 
               <button
@@ -86,7 +99,7 @@ export class ErrorBoundary extends React.Component<
                 className="w-full bg-gray-100 text-gray-700 rounded-xl py-3 font-semibold flex items-center justify-center space-x-2 active:bg-gray-200 transition-colors"
               >
                 <Home className="h-5 w-5" />
-                <span>返回首页</span>
+                <span>{this.t('error.goHome')}</span>
               </button>
             </div>
           </div>

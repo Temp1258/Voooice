@@ -249,6 +249,29 @@ export async function saveVoicePrint(
   });
 }
 
+/**
+ * Update a single field (or multiple fields) on an existing voiceprint record.
+ * This performs a read-modify-write so callers don't need the full object.
+ */
+export async function updateVoicePrint(
+  id: string,
+  updates: Partial<Omit<VoicePrint, 'id'>>,
+): Promise<VoicePrint | undefined> {
+  const existing = await getVoicePrint(id);
+  if (!existing) return undefined;
+
+  const updated: VoicePrint = { ...existing, ...updates };
+
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VOICEPRINTS_STORE, 'readwrite');
+    const store = tx.objectStore(VOICEPRINTS_STORE);
+    const request = store.put(updated);
+    request.onsuccess = () => resolve(updated);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 /** Delete a voiceprint and its associated audio blob */
 export async function deleteVoicePrint(id: string): Promise<void> {
   const db = await openDB();

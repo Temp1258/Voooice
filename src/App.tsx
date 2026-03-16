@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Mic, Users, MessageSquare, ArrowLeft, ShoppingBag, Settings } from 'lucide-react';
+import { Home, Mic, Users, MessageSquare, ArrowLeft, ShoppingBag, Settings, Radio } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { HomeView } from './components/HomeView';
@@ -8,11 +8,18 @@ import { VoicePrintsView } from './components/VoicePrintsView';
 import { SpeakView } from './components/SpeakView';
 import { MarketplaceView } from './components/MarketplaceView';
 import { SettingsView } from './components/SettingsView';
+import { RealtimeView } from './components/RealtimeView';
+import { VoiceTrainingView } from './components/VoiceTrainingView';
+import { AudiobookView } from './components/AudiobookView';
+import { MultiRoleDialogueView } from './components/MultiRoleDialogueView';
+import { ApiDocsView } from './components/ApiDocsView';
 import { getAllVoicePrints } from './utils/storage';
 import { voiceCloneService } from './services/voiceCloneService';
+import { useI18n } from './i18n';
 import type { AppView, VoicePrint } from './types';
 
 function App() {
+  const { t } = useI18n();
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [voicePrints, setVoicePrints] = useState<VoicePrint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,11 +55,16 @@ function App() {
 
   const viewTitle: Record<AppView, string> = {
     home: 'VocalText',
-    record: '录制声音',
-    voiceprints: '声纹档案',
-    speak: '文字转语音',
-    marketplace: '声纹市场',
-    settings: '设置',
+    record: t('record.title'),
+    voiceprints: t('voiceprints.title'),
+    speak: t('speak.title'),
+    realtime: t('realtime.title'),
+    marketplace: t('marketplace.title'),
+    settings: t('settings.title'),
+    training: '声纹训练',
+    audiobook: '有声读物',
+    dialogue: '多角色对话',
+    apidocs: '开放 API',
   };
 
   const showBackButton = currentView !== 'home';
@@ -64,7 +76,7 @@ function App() {
           <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Mic className="h-8 w-8 text-indigo-600" />
           </div>
-          <p className="text-gray-500">加载中...</p>
+          <p className="text-gray-500">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -84,10 +96,10 @@ function App() {
                 <button
                   onClick={() => setCurrentView('home')}
                   className="flex items-center space-x-1 text-indigo-600 active:text-indigo-800"
-                  aria-label="返回首页"
+                  aria-label={t('nav.back')}
                 >
                   <ArrowLeft className="h-5 w-5" />
-                  <span className="text-sm">返回</span>
+                  <span className="text-sm">{t('nav.back')}</span>
                 </button>
               )}
             </div>
@@ -99,7 +111,7 @@ function App() {
                 <button
                   onClick={() => setCurrentView('settings')}
                   className="p-1 text-gray-400 active:text-gray-600"
-                  aria-label="设置"
+                  aria-label={t('nav.settings')}
                 >
                   <Settings className="h-5 w-5" />
                 </button>
@@ -125,23 +137,41 @@ function App() {
           {currentView === 'speak' && (
             <SpeakView voicePrints={voicePrints} />
           )}
+          {currentView === 'realtime' && (
+            <RealtimeView voicePrints={voicePrints} />
+          )}
           {currentView === 'marketplace' && (
             <MarketplaceView />
           )}
           {currentView === 'settings' && (
             <SettingsView />
           )}
+          {currentView === 'training' && (
+            <VoiceTrainingView
+              onComplete={handleVoicePrintSaved}
+              onCancel={() => setCurrentView('home')}
+            />
+          )}
+          {currentView === 'audiobook' && (
+            <AudiobookView voicePrints={voicePrints} />
+          )}
+          {currentView === 'dialogue' && (
+            <MultiRoleDialogueView voicePrints={voicePrints} />
+          )}
+          {currentView === 'apidocs' && (
+            <ApiDocsView />
+          )}
         </main>
 
         {/* iOS-style tab bar */}
-        <nav className="bg-white/80 backdrop-blur-lg border-t border-gray-200 sticky bottom-0 z-50 pb-safe" role="navigation" aria-label="主导航">
+        <nav className="bg-white/80 backdrop-blur-lg border-t border-gray-200 sticky bottom-0 z-50 pb-safe" role="navigation" aria-label={t('nav.mainNav')}>
           <div className="max-w-lg mx-auto px-2 flex justify-around py-2">
             {[
-              { view: 'home' as AppView, icon: Home, label: '首页' },
-              { view: 'record' as AppView, icon: Mic, label: '录制' },
-              { view: 'marketplace' as AppView, icon: ShoppingBag, label: '市场' },
-              { view: 'voiceprints' as AppView, icon: Users, label: '声纹' },
-              { view: 'speak' as AppView, icon: MessageSquare, label: '合成' },
+              { view: 'home' as AppView, icon: Home, label: t('nav.home') },
+              { view: 'record' as AppView, icon: Mic, label: t('nav.record') },
+              { view: 'realtime' as AppView, icon: Radio, label: t('nav.realtime') },
+              { view: 'voiceprints' as AppView, icon: Users, label: t('nav.voiceprints') },
+              { view: 'speak' as AppView, icon: MessageSquare, label: t('nav.speak') },
             ].map(({ view, icon: Icon, label }) => (
               <button
                 key={view}

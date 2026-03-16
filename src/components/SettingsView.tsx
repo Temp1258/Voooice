@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Volume2,
 } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 type VoiceProvider = 'elevenlabs' | 'azure' | 'browser';
 type Locale = 'zh' | 'en';
@@ -21,6 +22,7 @@ interface SettingsViewProps {
 }
 
 export function SettingsView({ onNavigateHome }: SettingsViewProps) {
+  const { t } = useI18n();
   const [provider, setProvider] = useState<VoiceProvider>('elevenlabs');
   const [apiKey, setApiKey] = useState('');
   const [locale, setLocale] = useState<Locale>('zh');
@@ -34,17 +36,63 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
   const totalStorage = 500; // MB
   const storagePercent = (usedStorage / totalStorage) * 100;
 
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
   const handleTestConnection = async () => {
+    if (!apiKey.trim()) {
+      setConnectionStatus('error');
+      setConnectionError(t('settings.enterApiKey'));
+      return;
+    }
+
     setTestingConnection(true);
     setConnectionStatus('idle');
-    // Simulate connection test
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setConnectionStatus(apiKey.length > 0 ? 'success' : 'error');
-    setTestingConnection(false);
+    setConnectionError(null);
+
+    try {
+      if (provider === 'elevenlabs') {
+        // Real ElevenLabs API call to validate the key
+        const res = await fetch('https://api.elevenlabs.io/v1/voices', {
+          method: 'GET',
+          headers: { 'xi-api-key': apiKey },
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const detail = body?.detail?.message || body?.detail || `HTTP ${res.status}`;
+          throw new Error(String(detail));
+        }
+        const data = await res.json();
+        setConnectionStatus('success');
+        setConnectionError(t('settings.connected', { count: String(data.voices?.length ?? 0) }));
+      } else if (provider === 'azure') {
+        // Azure Speech Services token endpoint test
+        const res = await fetch(
+          'https://eastus.api.cognitive.microsoft.com/sts/v1.0/issueToken',
+          {
+            method: 'POST',
+            headers: {
+              'Ocp-Apim-Subscription-Key': apiKey,
+              'Content-Length': '0',
+            },
+          },
+        );
+        if (!res.ok) {
+          throw new Error(t('settings.azureAuthFailed', { status: String(res.status) }));
+        }
+        setConnectionStatus('success');
+        setConnectionError(t('settings.azureConnected'));
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setConnectionStatus('error');
+      setConnectionError(msg);
+    } finally {
+      setTestingConnection(false);
+    }
   };
 
   const handleClearCache = () => {
-    if (confirm('确定要清除缓存吗？这不会删除您的声纹数据。')) {
+    if (confirm(t('settings.clearCacheConfirm'))) {
       // Clear cache logic
       console.log('Cache cleared');
     }
@@ -56,11 +104,9 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
   const handleDeleteAllData = () => {
     if (
-      confirm(
-        '确定要删除所有数据吗？此操作不可恢复，您的所有声纹和设置将被永久删除。'
-      )
+      confirm(t('settings.deleteAllConfirm'))
     ) {
-      if (confirm('再次确认：这将永久删除所有数据，是否继续？')) {
+      if (confirm(t('settings.deleteAllConfirmAgain'))) {
         console.log('All data deleted');
       }
     }
@@ -69,7 +115,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
   const providerOptions: { value: VoiceProvider; label: string }[] = [
     { value: 'elevenlabs', label: 'ElevenLabs' },
     { value: 'azure', label: 'Azure Speech' },
-    { value: 'browser', label: '浏览器离线' },
+    { value: 'browser', label: t('settings.browserOffline') },
   ];
 
   const ToggleSwitch = ({
@@ -136,28 +182,28 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
   return (
     <div className="space-y-6 pb-8">
-      <h2 className="text-xl font-bold text-gray-900">设置</h2>
+      <h2 className="text-xl font-bold text-gray-900">{t('settings.title')}</h2>
 
       {/* Account Section */}
       <div>
-        <SectionHeader title="账户" />
+        <SectionHeader title={t('settings.account')} />
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
           <div className="px-4 py-4 flex items-center space-x-3">
             <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
               <User className="h-6 w-6 text-indigo-600" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-gray-900">未登录</p>
-              <p className="text-xs text-gray-400">登录以同步您的数据</p>
+              <p className="font-semibold text-gray-900">{t('settings.notLoggedIn')}</p>
+              <p className="text-xs text-gray-400">{t('settings.loginToSync')}</p>
             </div>
             <button className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg active:bg-indigo-700 transition-colors">
-              登录
+              {t('auth.login')}
             </button>
           </div>
           <SettingRow
             icon={<LogOut className="h-4 w-4 text-red-500" />}
             iconBg="bg-red-50"
-            label="退出登录"
+            label={t('auth.logout')}
             onClick={() => console.log('Logout')}
           />
         </div>
@@ -165,14 +211,14 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
       {/* Voice Engine Section */}
       <div>
-        <SectionHeader title="语音引擎" />
+        <SectionHeader title={t('settings.voiceEngine')} />
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
           <div className="px-4 py-3">
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
                 <Volume2 className="h-4 w-4 text-purple-600" />
               </div>
-              <span className="text-gray-900 text-sm font-medium">语音提供商</span>
+              <span className="text-gray-900 text-sm font-medium">{t('settings.voiceProvider')}</span>
             </div>
             <div className="flex space-x-2">
               {providerOptions.map((opt) => (
@@ -197,7 +243,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
                 <div className="w-8 h-8 bg-yellow-50 rounded-lg flex items-center justify-center">
                   <Key className="h-4 w-4 text-yellow-600" />
                 </div>
-                <span className="text-gray-900 text-sm font-medium">API 密钥</span>
+                <span className="text-gray-900 text-sm font-medium">{t('settings.apiKey')}</span>
               </div>
               <div className="flex space-x-2">
                 <input
@@ -207,7 +253,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
                     setApiKey(e.target.value);
                     setConnectionStatus('idle');
                   }}
-                  placeholder="输入 API 密钥…"
+                  placeholder={t('settings.apiKeyPlaceholder')}
                   className="flex-1 px-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <button
@@ -222,14 +268,23 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
                   }`}
                 >
                   {testingConnection
-                    ? '测试中…'
+                    ? t('settings.testing')
                     : connectionStatus === 'success'
-                      ? '已连接'
+                      ? t('settings.connectionSuccess')
                       : connectionStatus === 'error'
-                        ? '失败'
-                        : '测试连接'}
+                        ? t('settings.connectionFailed')
+                        : t('settings.testConnection')}
                 </button>
               </div>
+              {connectionError && connectionStatus !== 'idle' && (
+                <p
+                  className={`text-xs mt-2 ${
+                    connectionStatus === 'success' ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {connectionError}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -237,7 +292,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
       {/* Storage Section */}
       <div>
-        <SectionHeader title="存储" />
+        <SectionHeader title={t('settings.storage')} />
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
           <div className="px-4 py-3">
             <div className="flex items-center space-x-3 mb-3">
@@ -246,7 +301,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-gray-900 text-sm font-medium">已用空间</span>
+                  <span className="text-gray-900 text-sm font-medium">{t('settings.usedStorage')}</span>
                   <span className="text-xs text-gray-400">
                     {usedStorage} MB / {totalStorage} MB
                   </span>
@@ -263,13 +318,13 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
           <SettingRow
             icon={<Trash2 className="h-4 w-4 text-gray-500" />}
             iconBg="bg-gray-50"
-            label="清除缓存"
+            label={t('settings.clearCache')}
             onClick={handleClearCache}
           />
           <SettingRow
             icon={<Download className="h-4 w-4 text-green-600" />}
             iconBg="bg-green-50"
-            label="导出所有数据"
+            label={t('settings.exportAllData')}
             onClick={handleExportData}
           />
         </div>
@@ -277,12 +332,12 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
       {/* Notifications & Sync */}
       <div>
-        <SectionHeader title="通知与同步" />
+        <SectionHeader title={t('settings.notificationsAndSync')} />
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
           <SettingRow
             icon={<Info className="h-4 w-4 text-blue-600" />}
             iconBg="bg-blue-50"
-            label="推送通知"
+            label={t('settings.pushNotifications')}
             rightElement={
               <ToggleSwitch
                 enabled={notifications}
@@ -293,7 +348,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
           <SettingRow
             icon={<HardDrive className="h-4 w-4 text-indigo-600" />}
             iconBg="bg-indigo-50"
-            label="自动同步"
+            label={t('settings.autoSync')}
             rightElement={
               <ToggleSwitch
                 enabled={autoSync}
@@ -306,14 +361,14 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
       {/* Language Section */}
       <div>
-        <SectionHeader title="语言" />
+        <SectionHeader title={t('settings.language')} />
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-4 py-3">
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center">
                 <Globe2 className="h-4 w-4 text-teal-600" />
               </div>
-              <span className="text-gray-900 text-sm font-medium">界面语言</span>
+              <span className="text-gray-900 text-sm font-medium">{t('settings.uiLanguage')}</span>
             </div>
             <div className="flex space-x-2">
               <button
@@ -343,18 +398,18 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
       {/* Privacy Section */}
       <div>
-        <SectionHeader title="隐私" />
+        <SectionHeader title={t('settings.privacy')} />
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
           <SettingRow
             icon={<Shield className="h-4 w-4 text-green-600" />}
             iconBg="bg-green-50"
-            label="隐私政策"
+            label={t('privacy.policyLink')}
             onClick={() => window.open('/privacy', '_blank')}
           />
           <SettingRow
             icon={<Trash2 className="h-4 w-4 text-red-500" />}
             iconBg="bg-red-50"
-            label="删除所有数据"
+            label={t('settings.deleteAllData')}
             onClick={handleDeleteAllData}
           />
         </div>
@@ -362,12 +417,12 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
       {/* About Section */}
       <div>
-        <SectionHeader title="关于" />
+        <SectionHeader title={t('settings.about')} />
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
           <SettingRow
             icon={<Info className="h-4 w-4 text-gray-500" />}
             iconBg="bg-gray-50"
-            label="版本"
+            label={t('settings.version')}
             value="1.0.0"
           />
           <SettingRow
@@ -381,7 +436,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
           <SettingRow
             icon={<Info className="h-4 w-4 text-gray-500" />}
             iconBg="bg-gray-50"
-            label="开源许可"
+            label={t('settings.openSourceLicenses')}
             onClick={() => console.log('Show licenses')}
           />
         </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Star, Download, Play, Tag, Filter, Globe2, Heart } from 'lucide-react';
+import { useI18n } from '../i18n';
 import type { MarketplaceVoice } from '../types';
 
 const mockVoices: MarketplaceVoice[] = [
@@ -112,6 +113,7 @@ const mockVoices: MarketplaceVoice[] = [
 type FilterTab = 'popular' | 'latest' | 'free';
 
 export function MarketplaceView() {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('popular');
   const [selectedVoice, setSelectedVoice] = useState<MarketplaceVoice | null>(null);
@@ -165,15 +167,15 @@ export function MarketplaceView() {
   };
 
   const formatDownloads = (count: number) => {
-    if (count >= 10000) return `${(count / 10000).toFixed(1)}万`;
+    if (count >= 10000) return `${(count / 10000).toFixed(1)}${t('marketplace.tenThousand')}`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
     return String(count);
   };
 
   const tabs: { key: FilterTab; label: string }[] = [
-    { key: 'popular', label: '热门' },
-    { key: 'latest', label: '最新' },
-    { key: 'free', label: '免费' },
+    { key: 'popular', label: t('marketplace.popular') },
+    { key: 'latest', label: t('marketplace.latest') },
+    { key: 'free', label: t('marketplace.free') },
   ];
 
   // Detail modal
@@ -184,7 +186,7 @@ export function MarketplaceView() {
           onClick={() => setSelectedVoice(null)}
           className="text-indigo-600 text-sm font-medium"
         >
-          ← 返回市场
+          {t('marketplace.backToMarket')}
         </button>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -196,18 +198,18 @@ export function MarketplaceView() {
                 <span>{selectedVoice.language}</span>
               </span>
               <span className="text-2xl font-bold">
-                {selectedVoice.price === 0 ? '免费' : `¥${selectedVoice.price.toFixed(2)}`}
+                {selectedVoice.price === 0 ? t('marketplace.free') : `¥${selectedVoice.price.toFixed(2)}`}
               </span>
             </div>
             <h2 className="text-2xl font-bold mb-1">{selectedVoice.name}</h2>
-            <p className="text-white/70 text-sm">by {selectedVoice.authorName}</p>
+            <p className="text-white/70 text-sm">{t('marketplace.author')}: {selectedVoice.authorName}</p>
           </div>
 
           {/* Preview button */}
           <div className="p-4 border-b border-gray-100">
             <button className="w-full bg-indigo-50 text-indigo-600 rounded-xl py-3 flex items-center justify-center space-x-2 font-medium active:bg-indigo-100 transition-colors">
               <Play className="h-5 w-5" />
-              <span>播放预览</span>
+              <span>{t('marketplace.preview')}</span>
             </button>
           </div>
 
@@ -217,26 +219,26 @@ export function MarketplaceView() {
               <div className="flex items-center justify-center space-x-1">
                 {renderStars(selectedVoice.rating)}
               </div>
-              <p className="text-xs text-gray-400 mt-1">{selectedVoice.rating} 分</p>
+              <p className="text-xs text-gray-400 mt-1">{selectedVoice.rating} {t('marketplace.rating')}</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center space-x-1 text-gray-600">
                 <Download className="h-4 w-4" />
                 <span className="font-semibold">{formatDownloads(selectedVoice.downloads)}</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">下载量</p>
+              <p className="text-xs text-gray-400 mt-1">{t('marketplace.downloads')}</p>
             </div>
           </div>
 
           {/* Description */}
           <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 mb-2">简介</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">{t('marketplace.description')}</h3>
             <p className="text-gray-600 text-sm leading-relaxed">{selectedVoice.description}</p>
           </div>
 
           {/* Tags */}
           <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 mb-2">标签</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">{t('marketplace.tags')}</h3>
             <div className="flex flex-wrap gap-2">
               {selectedVoice.tags.map((tag) => (
                 <span
@@ -254,7 +256,7 @@ export function MarketplaceView() {
           <div className="p-4">
             <button className="w-full bg-indigo-600 text-white rounded-xl py-3.5 font-semibold active:bg-indigo-700 transition-colors flex items-center justify-center space-x-2">
               <Download className="h-5 w-5" />
-              <span>{selectedVoice.price === 0 ? '免费下载' : `购买 ¥${selectedVoice.price.toFixed(2)}`}</span>
+              <span>{selectedVoice.price === 0 ? t('marketplace.freeDownload') : t('marketplace.purchase', { price: selectedVoice.price.toFixed(2) })}</span>
             </button>
           </div>
         </div>
@@ -271,7 +273,7 @@ export function MarketplaceView() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="搜索声音、作者或标签…"
+          placeholder={t('marketplace.search')}
           className="w-full pl-11 pr-10 py-3 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors"
         />
         <Filter className="absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -298,8 +300,8 @@ export function MarketplaceView() {
       {filteredVoices.length === 0 ? (
         <div className="text-center py-16">
           <Search className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">未找到匹配的声音</p>
-          <p className="text-gray-400 text-sm mt-1">尝试其他搜索词</p>
+          <p className="text-gray-500 font-medium">{t('marketplace.noResults')}</p>
+          <p className="text-gray-400 text-sm mt-1">{t('marketplace.tryOtherKeywords')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
@@ -357,7 +359,7 @@ export function MarketplaceView() {
                       voice.price === 0 ? 'text-green-600' : 'text-orange-600'
                     }`}
                   >
-                    {voice.price === 0 ? '免费' : `¥${voice.price.toFixed(2)}`}
+                    {voice.price === 0 ? t('marketplace.free') : `¥${voice.price.toFixed(2)}`}
                   </span>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Mic, MessageSquare, Users, ChevronRight, ShoppingBag } from 'lucide-react';
+import { Mic, MessageSquare, Users, ChevronRight, ShoppingBag, BookOpen, GraduationCap, MessageCircle, Code } from 'lucide-react';
+import { useI18n } from '../i18n';
 import type { AppView, VoicePrint } from '../types';
 
 interface HomeViewProps {
@@ -8,6 +9,7 @@ interface HomeViewProps {
 }
 
 export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
+  const { t } = useI18n();
   return (
     <div className="space-y-6">
       {/* Hero Section */}
@@ -15,9 +17,9 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
         <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Mic className="h-10 w-10 text-indigo-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">欢迎使用 VocalText</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('home.welcomeTitle')}</h2>
         <p className="text-gray-500 max-w-sm mx-auto">
-          录制您的声音，创建声纹档案，然后通过打字让 AI 模仿您的声音说话
+          {t('home.welcomeDescription')}
         </p>
       </div>
 
@@ -32,8 +34,8 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
               <Mic className="h-6 w-6 text-white" />
             </div>
             <div className="text-left">
-              <p className="font-semibold text-lg">录制声音</p>
-              <p className="text-indigo-200 text-sm">创建新的声纹档案</p>
+              <p className="font-semibold text-lg">{t('home.recordButton')}</p>
+              <p className="text-indigo-200 text-sm">{t('home.recordSubDescription')}</p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 text-indigo-300" />
@@ -59,11 +61,11 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
             <div className="text-left">
               <p className={`font-semibold text-lg ${
                 voicePrints.length > 0 ? 'text-gray-900' : 'text-gray-400'
-              }`}>文字转语音</p>
+              }`}>{t('home.speakButton')}</p>
               <p className="text-gray-400 text-sm">
                 {voicePrints.length > 0
-                  ? '用已有声纹合成语音'
-                  : '请先录制声音'}
+                  ? t('home.speakSubDescription')
+                  : t('home.speakNeedRecord')}
               </p>
             </div>
           </div>
@@ -81,11 +83,11 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
               <Users className="h-6 w-6 text-purple-600" />
             </div>
             <div className="text-left">
-              <p className="font-semibold text-lg text-gray-900">声纹档案</p>
+              <p className="font-semibold text-lg text-gray-900">{t('home.voiceprintsButton')}</p>
               <p className="text-gray-400 text-sm">
                 {voicePrints.length > 0
-                  ? `已保存 ${voicePrints.length} 个声纹`
-                  : '暂无声纹档案'}
+                  ? t('home.voiceprintsSaved', { count: String(voicePrints.length) })
+                  : t('home.voiceprintsEmpty')}
               </p>
             </div>
           </div>
@@ -101,22 +103,74 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
               <ShoppingBag className="h-6 w-6 text-amber-600" />
             </div>
             <div className="text-left">
-              <p className="font-semibold text-lg text-gray-900">声纹市场</p>
-              <p className="text-gray-400 text-sm">浏览和下载社区声纹</p>
+              <p className="font-semibold text-lg text-gray-900">{t('marketplace.title')}</p>
+              <p className="text-gray-400 text-sm">{t('home.marketplaceDescription')}</p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 text-gray-300" />
         </button>
       </div>
 
+      {/* Advanced Features */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-1">高级功能</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => onNavigate('training')}
+            className="bg-white border border-gray-200 rounded-xl p-3 text-left active:bg-gray-50"
+          >
+            <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center mb-2">
+              <GraduationCap className="h-5 w-5 text-teal-600" />
+            </div>
+            <p className="font-medium text-sm text-gray-900">声纹训练</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">多段录制更精准</p>
+          </button>
+
+          <button
+            onClick={() => onNavigate('audiobook')}
+            disabled={voicePrints.length === 0}
+            className="bg-white border border-gray-200 rounded-xl p-3 text-left active:bg-gray-50 disabled:opacity-50"
+          >
+            <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center mb-2">
+              <BookOpen className="h-5 w-5 text-blue-600" />
+            </div>
+            <p className="font-medium text-sm text-gray-900">有声读物</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">长文本分段合成</p>
+          </button>
+
+          <button
+            onClick={() => onNavigate('dialogue')}
+            disabled={voicePrints.length === 0}
+            className="bg-white border border-gray-200 rounded-xl p-3 text-left active:bg-gray-50 disabled:opacity-50"
+          >
+            <div className="w-9 h-9 bg-pink-100 rounded-lg flex items-center justify-center mb-2">
+              <MessageCircle className="h-5 w-5 text-pink-600" />
+            </div>
+            <p className="font-medium text-sm text-gray-900">多角色对话</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">创建对话场景</p>
+          </button>
+
+          <button
+            onClick={() => onNavigate('apidocs')}
+            className="bg-white border border-gray-200 rounded-xl p-3 text-left active:bg-gray-50"
+          >
+            <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
+              <Code className="h-5 w-5 text-gray-600" />
+            </div>
+            <p className="font-medium text-sm text-gray-900">开放 API</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">集成到你的应用</p>
+          </button>
+        </div>
+      </div>
+
       {/* How it works */}
       <div className="bg-blue-50 rounded-2xl p-5 mt-4">
-        <h3 className="font-semibold text-blue-900 mb-3">使用说明</h3>
+        <h3 className="font-semibold text-blue-900 mb-3">{t('home.howItWorksTitle')}</h3>
         <div className="space-y-2 text-sm text-blue-700">
-          <p>1. 点击「录制声音」朗读一段文字（建议 10-30 秒）</p>
-          <p>2. 录制完成后保存为声纹档案</p>
-          <p>3. 在「文字转语音」中选择声纹并输入文字</p>
-          <p>4. 点击合成，即可听到模仿该声纹的语音</p>
+          <p>{t('home.instruction1')}</p>
+          <p>{t('home.instruction2')}</p>
+          <p>{t('home.instruction3')}</p>
+          <p>{t('home.instruction4')}</p>
         </div>
       </div>
     </div>

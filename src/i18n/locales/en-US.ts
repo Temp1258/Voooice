@@ -4,8 +4,10 @@ const enUS: Record<string, string> = {
   'nav.record': 'Record',
   'nav.voiceprints': 'Voiceprints',
   'nav.speak': 'Speak',
+  'nav.realtime': 'Live',
   'nav.back': 'Back',
   'nav.settings': 'Settings',
+  'nav.mainNav': 'Main navigation',
 
   // Home page
   'home.welcomeTitle': 'Welcome to VocalText',
@@ -104,7 +106,11 @@ const enUS: Record<string, string> = {
   'privacy.yourRightsDetail': 'You can delete or export all your data at any time',
   'privacy.declineExplanation': 'If you decline, the app will not be able to access your microphone and core features will be unavailable.',
 
+  // Realtime
+  'realtime.title': 'Live Voice',
+
   // Marketplace
+  'marketplace.title': 'Marketplace',
   'marketplace.browseVoices': 'Browse Voices',
   'marketplace.popular': 'Popular',
   'marketplace.search': 'Search voices',

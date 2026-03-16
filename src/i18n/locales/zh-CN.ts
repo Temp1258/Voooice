@@ -4,8 +4,11 @@ const zhCN: Record<string, string> = {
   'nav.record': '录制',
   'nav.voiceprints': '声纹',
   'nav.speak': '合成',
+  'nav.realtime': '变声',
   'nav.back': '返回',
   'nav.settings': '设置',
+  'nav.mainNav': '主导航',
+  'nav.marketplace': '市场',
 
   // Home page
   'home.welcomeTitle': '欢迎使用 VocalText',
@@ -25,6 +28,14 @@ const zhCN: Record<string, string> = {
   'home.step3Description': '为你的声纹命名并保存到本地',
   'home.step4Title': '语音合成',
   'home.step4Description': '输入任意文字，用你的声音朗读出来',
+  'home.speakNeedRecord': '请先录制声音',
+  'home.voiceprintsSaved': '已保存 {count} 个声纹',
+  'home.voiceprintsEmpty': '暂无声纹档案',
+  'home.marketplaceDescription': '浏览和下载社区声纹',
+  'home.instruction1': '1. 点击「录制声音」朗读一段文字（建议 10-30 秒）',
+  'home.instruction2': '2. 录制完成后保存为声纹档案',
+  'home.instruction3': '3. 在「文字转语音」中选择声纹并输入文字',
+  'home.instruction4': '4. 点击合成，即可听到模仿该声纹的语音',
 
   // Record page
   'record.title': '录制声音',
@@ -41,6 +52,10 @@ const zhCN: Record<string, string> = {
   'record.duration': '录制时长',
   'record.frequencyProfile': '频率特征',
   'record.saveButton': '保存',
+  'record.uploadingToCloud': '上传至云端...',
+  'record.saving': '保存中...',
+  'record.cloudSyncSuccess': '声纹已同步至云端声音克隆服务',
+  'record.localSaveSuccessCloudFailed': '本地保存成功，云端上传失败',
 
   // Voiceprints page
   'voiceprints.title': '声纹档案',
@@ -49,6 +64,7 @@ const zhCN: Record<string, string> = {
   'voiceprints.deleteConfirm': '确定要删除这个声纹吗？此操作不可撤销。',
   'voiceprints.play': '播放',
   'voiceprints.createdDate': '创建于 {date}',
+  'voiceprints.emptyTitle': '暂无声纹档案',
 
   // Speak page
   'speak.title': '文字转语音',
@@ -70,6 +86,13 @@ const zhCN: Record<string, string> = {
   'speak.speed': '语速',
   'speak.stability': '稳定性',
   'speak.similarity': '相似度',
+  'speak.noVoiceprints': '暂无可用声纹',
+  'speak.noVoiceprintsHint': '请先录制声音并保存声纹',
+  'speak.previewOriginal': '试听原始录音',
+  'speak.emotionLabel': '情感语气',
+  'speak.synthesizing': '正在合成...',
+  'speak.playingClickStop': '正在播放...点击停止',
+  'speak.aboutCloningTitle': '关于声音克隆',
 
   // Auth
   'auth.login': '登录',
@@ -104,7 +127,11 @@ const zhCN: Record<string, string> = {
   'privacy.yourRightsDetail': '您可以随时删除或导出所有数据',
   'privacy.declineExplanation': '如果您拒绝，应用将无法访问麦克风，核心功能将不可用。',
 
+  // Realtime
+  'realtime.title': '实时变声',
+
   // Marketplace
+  'marketplace.title': '声纹市场',
   'marketplace.browseVoices': '浏览声音',
   'marketplace.popular': '热门',
   'marketplace.search': '搜索声音',
@@ -113,6 +140,17 @@ const zhCN: Record<string, string> = {
   'marketplace.rating': '评分',
   'marketplace.author': '作者',
   'marketplace.preview': '试听',
+  'marketplace.tenThousand': '万',
+  'marketplace.latest': '最新',
+  'marketplace.free': '免费',
+  'marketplace.backToMarket': '\u2190 返回市场',
+  'marketplace.downloads': '下载量',
+  'marketplace.description': '简介',
+  'marketplace.tags': '标签',
+  'marketplace.freeDownload': '免费下载',
+  'marketplace.purchase': '购买 \u00A5{price}',
+  'marketplace.noResults': '未找到匹配的声音',
+  'marketplace.tryOtherKeywords': '尝试其他搜索词',
 
   // Settings
   'settings.title': '设置',
