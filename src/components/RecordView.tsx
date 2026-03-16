@@ -3,7 +3,7 @@ import { Mic, Square, RotateCcw, Save, AlertCircle } from 'lucide-react';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { WaveformVisualizer } from './WaveformVisualizer';
 import { FrequencyProfile } from './FrequencyProfile';
-import { extractFrequencyProfile, estimateAveragePitch, audioBufferToBase64 } from '../utils/audioAnalyzer';
+import { extractFrequencyProfile, estimateAveragePitch, audioBufferToBlob } from '../utils/audioAnalyzer';
 import { saveVoicePrint } from '../utils/storage';
 import type { VoicePrint } from '../types';
 
@@ -54,19 +54,19 @@ export function RecordView({ onSaved }: RecordViewProps) {
 
     setSaving(true);
     try {
-      const audioData = audioBufferToBase64(audioBuffer);
+      const audioBlob = audioBufferToBlob(audioBuffer);
       const voiceprint: VoicePrint = {
         id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
         name: name.trim(),
         createdAt: Date.now(),
-        audioData,
+        hasAudioBlob: true,
         duration,
         frequencyProfile,
         averagePitch,
         language: 'zh-CN',
       };
 
-      await saveVoicePrint(voiceprint);
+      await saveVoicePrint(voiceprint, audioBlob);
       onSaved(voiceprint);
     } catch (err) {
       console.error('Failed to save voiceprint:', err);

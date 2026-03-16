@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Trash2, Play, Clock, Activity } from 'lucide-react';
 import { FrequencyProfile } from './FrequencyProfile';
-import { deleteVoicePrint as deleteVP } from '../utils/storage';
-import { base64ToAudioBuffer } from '../utils/audioAnalyzer';
+import { deleteVoicePrint as deleteVP, getAudioBlob } from '../utils/storage';
+import { blobToAudioBuffer } from '../utils/audioAnalyzer';
 import type { VoicePrint } from '../types';
 
 interface VoicePrintsViewProps {
@@ -28,8 +28,14 @@ export function VoicePrintsView({ voicePrints, onDeleted }: VoicePrintsViewProps
 
     try {
       setPlayingId(vp.id);
+      const blob = await getAudioBlob(vp.id);
+      if (!blob) {
+        console.error('No audio data found for voiceprint:', vp.id);
+        setPlayingId(null);
+        return;
+      }
       const audioContext = new AudioContext();
-      const audioBuffer = await base64ToAudioBuffer(vp.audioData, audioContext);
+      const audioBuffer = await blobToAudioBuffer(blob, audioContext);
       const source = audioContext.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioContext.destination);

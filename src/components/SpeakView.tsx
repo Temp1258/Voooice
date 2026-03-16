@@ -1,33 +1,41 @@
 import React, { useState, useRef } from 'react';
-import { Volume2, Loader2, AlertCircle, ChevronDown, Activity } from 'lucide-react';
-import { base64ToAudioBuffer } from '../utils/audioAnalyzer';
-import type { VoicePrint, SpeakingState } from '../types';
+import { Volume2, AlertCircle, ChevronDown, Activity, Smile, Frown, Zap, Heart, Wind, Minus } from 'lucide-react';
+import { getAudioBlob } from '../utils/storage';
+import { blobToAudioBuffer } from '../utils/audioAnalyzer';
+import { voiceCloneService } from '../services/voiceCloneService';
+import type { VoicePrint, SpeakingState, EmotionType } from '../types';
 
 interface SpeakViewProps {
   voicePrints: VoicePrint[];
 }
 
-/**
- * Text-to-Speech view.
- *
- * Architecture note:
- * In a production app, this would send the text + voiceprint embedding to a
- * voice cloning API (e.g., ElevenLabs, Microsoft Custom Neural Voice, Coqui TTS,
- * or a self-hosted VALL-E/Bark model). The API would return synthesized audio
- * matching the target voice.
- *
- * For this demo, we use the Web Speech Synthesis API with pitch/rate adjustments
- * based on the voiceprint analysis, and mix in the original recording characteristics
- * to demonstrate the concept.
- */
+const EMOTIONS: { value: EmotionType; label: string; icon: React.ReactNode }[] = [
+  { value: 'neutral', label: '中性', icon: <Minus className="h-4 w-4" /> },
+  { value: 'happy', label: '开心', icon: <Smile className="h-4 w-4" /> },
+  { value: 'sad', label: '悲伤', icon: <Frown className="h-4 w-4" /> },
+  { value: 'excited', label: '激动', icon: <Zap className="h-4 w-4" /> },
+  { value: 'calm', label: '温柔', icon: <Heart className="h-4 w-4" /> },
+  { value: 'angry', label: '愤怒', icon: <Wind className="h-4 w-4" /> },
+];
+
+const LANGUAGES = [
+  { code: 'zh-CN', label: '中文' },
+  { code: 'en-US', label: 'English' },
+  { code: 'ja-JP', label: '日本語' },
+  { code: 'ko-KR', label: '한국어' },
+];
+
 export function SpeakView({ voicePrints }: SpeakViewProps) {
-  const [selectedVPId, setSelectedVPId] = useState<string>(
-    voicePrints[0]?.id || ''
-  );
+  const [selectedVPId, setSelectedVPId] = useState<string>(voicePrints[0]?.id || '');
   const [text, setText] = useState('');
   const [speakingState, setSpeakingState] = useState<SpeakingState>('idle');
   const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emotion, setEmotion] = useState<EmotionType>('neutral');
+  const [language, setLanguage] = useState('zh-CN');
+  const [speed, setSpeed] = useState(1.0);
+  const [stability, setStability] = useState(0.5);
+  const [similarity, setSimilarity] = useState(0.75);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
@@ -40,37 +48,41 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
     setSpeakingState('synthesizing');
 
     try {
-      // Strategy 1: Use Web Speech Synthesis with voice characteristics from the voiceprint
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
+      const voiceId = selectedVP.cloudVoiceId || selectedVP.id;
 
-        // Adjust synthesis parameters based on voiceprint analysis
-        // Map average pitch to rate/pitch adjustments
-        const basePitch = 150; // Average human speaking pitch
-        const pitchRatio = selectedVP.averagePitch / basePitch;
-        utterance.pitch = Math.max(0.1, Math.min(2, pitchRatio));
-        utterance.rate = 0.9; // Slightly slower for clarity
+      const audioBlob = await voiceCloneService.synthesize(text, voiceId, {
+        language,
+        emotion,
+        speed,
+        stability,
+        similarity,
+      });
 
-        // Try to find a Chinese voice
-        const voices = speechSynthesis.getVoices();
-        const zhVoice = voices.find(v => v.lang.startsWith('zh'));
-        if (zhVoice) {
-          utterance.voice = zhVoice;
-        }
-
-        utterance.onstart = () => setSpeakingState('speaking');
-        utterance.onend = () => setSpeakingState('idle');
-        utterance.onerror = (event) => {
-          console.error('Speech synthesis error:', event);
-          setError('语音合成失败，请重试');
-          setSpeakingState('error');
+      // If the blob has data, play it directly
+      if (audioBlob.size > 0) {
+        const audioContext = new AudioContext();
+        audioContextRef.current = audioContext;
+        const buffer = await audioContext.decodeAudioData(await audioBlob.arrayBuffer());
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        sourceRef.current = source;
+        source.onended = () => {
+          setSpeakingState('idle');
+          audioContext.close();
         };
-
-        speechSynthesis.cancel(); // Cancel any ongoing speech
-        speechSynthesis.speak(utterance);
+        setSpeakingState('speaking');
+        source.start();
       } else {
-        setError('您的浏览器不支持语音合成');
-        setSpeakingState('error');
+        // Web Speech fallback already played it via utterance
+        setSpeakingState('speaking');
+        // Monitor speechSynthesis for end
+        const checkDone = setInterval(() => {
+          if (!speechSynthesis.speaking) {
+            clearInterval(checkDone);
+            setSpeakingState('idle');
+          }
+        }, 200);
       }
     } catch (err: any) {
       console.error('Synthesis failed:', err);
@@ -81,11 +93,12 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
 
   const handlePlayOriginal = async () => {
     if (!selectedVP) return;
-
     try {
+      const blob = await getAudioBlob(selectedVP.id);
+      if (!blob) return;
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
-      const buffer = await base64ToAudioBuffer(selectedVP.audioData, audioContext);
+      const buffer = await blobToAudioBuffer(blob, audioContext);
       const source = audioContext.createBufferSource();
       source.buffer = buffer;
       source.connect(audioContext.destination);
@@ -122,7 +135,6 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
         <p className="text-gray-500 text-sm">选择声纹，输入文字，生成语音</p>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start space-x-3">
           <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -132,11 +144,12 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
 
       {/* Voice selection */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-        <label className="text-sm font-medium text-gray-700 mb-2 block">选择声纹</label>
+        <label className="text-sm font-medium text-gray-700 mb-2 block" id="voice-select-label">选择声纹</label>
         <div className="relative">
           <button
             onClick={() => setShowDropdown(!showDropdown)}
             className="w-full border border-gray-300 rounded-xl px-4 py-3 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-labelledby="voice-select-label"
           >
             {selectedVP ? (
               <div className="flex items-center space-x-3">
@@ -159,22 +172,15 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
               {voicePrints.map((vp) => (
                 <button
                   key={vp.id}
-                  onClick={() => {
-                    setSelectedVPId(vp.id);
-                    setShowDropdown(false);
-                  }}
+                  onClick={() => { setSelectedVPId(vp.id); setShowDropdown(false); }}
                   className={`w-full px-4 py-3 text-left flex items-center space-x-3 transition-colors ${
-                    vp.id === selectedVPId
-                      ? 'bg-indigo-50'
-                      : 'hover:bg-gray-50 active:bg-gray-100'
+                    vp.id === selectedVPId ? 'bg-indigo-50' : 'active:bg-gray-100'
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                     vp.id === selectedVPId ? 'bg-indigo-200' : 'bg-gray-100'
                   }`}>
-                    <Activity className={`h-4 w-4 ${
-                      vp.id === selectedVPId ? 'text-indigo-600' : 'text-gray-500'
-                    }`} />
+                    <Activity className={`h-4 w-4 ${vp.id === selectedVPId ? 'text-indigo-600' : 'text-gray-500'}`} />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{vp.name}</p>
@@ -190,6 +196,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
           <button
             onClick={handlePlayOriginal}
             className="mt-3 text-sm text-indigo-600 flex items-center space-x-1 active:text-indigo-800"
+            aria-label="试听原始录音"
           >
             <Volume2 className="h-4 w-4" />
             <span>试听原始录音</span>
@@ -197,10 +204,98 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
         )}
       </div>
 
+      {/* Emotion selection */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+        <label className="text-sm font-medium text-gray-700 mb-3 block">情感语气</label>
+        <div className="grid grid-cols-3 gap-2">
+          {EMOTIONS.map(({ value, label, icon }) => (
+            <button
+              key={value}
+              onClick={() => setEmotion(value)}
+              className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+                emotion === value
+                  ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-300'
+                  : 'bg-gray-50 text-gray-600 border-2 border-transparent active:bg-gray-100'
+              }`}
+              aria-pressed={emotion === value}
+            >
+              {icon}
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Language & Speed */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 space-y-4">
+        <div>
+          <label className="text-sm font-medium text-gray-700 mb-1 block" htmlFor="lang-select">合成语言</label>
+          <select
+            id="lang-select"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {LANGUAGES.map(l => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label className="text-sm font-medium text-gray-700" htmlFor="speed-range">语速</label>
+            <span className="text-xs text-gray-400">{speed.toFixed(1)}x</span>
+          </div>
+          <input
+            id="speed-range"
+            type="range"
+            min="0.5"
+            max="2.0"
+            step="0.1"
+            value={speed}
+            onChange={(e) => setSpeed(parseFloat(e.target.value))}
+            className="w-full accent-indigo-600"
+          />
+        </div>
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label className="text-sm font-medium text-gray-700" htmlFor="stability-range">稳定性</label>
+            <span className="text-xs text-gray-400">{(stability * 100).toFixed(0)}%</span>
+          </div>
+          <input
+            id="stability-range"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={stability}
+            onChange={(e) => setStability(parseFloat(e.target.value))}
+            className="w-full accent-indigo-600"
+          />
+        </div>
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label className="text-sm font-medium text-gray-700" htmlFor="similarity-range">相似度</label>
+            <span className="text-xs text-gray-400">{(similarity * 100).toFixed(0)}%</span>
+          </div>
+          <input
+            id="similarity-range"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={similarity}
+            onChange={(e) => setSimilarity(parseFloat(e.target.value))}
+            className="w-full accent-indigo-600"
+          />
+        </div>
+      </div>
+
       {/* Text input */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-        <label className="text-sm font-medium text-gray-700 mb-2 block">输入文字</label>
+        <label className="text-sm font-medium text-gray-700 mb-2 block" htmlFor="tts-text">输入文字</label>
         <textarea
+          id="tts-text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="请输入要转换为语音的文字..."
@@ -208,40 +303,38 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
           rows={4}
           maxLength={500}
         />
-        <div className="flex justify-between items-center mt-2">
+        <div className="flex justify-end mt-1">
           <span className="text-xs text-gray-400">{text.length}/500</span>
         </div>
       </div>
 
       {/* Synthesize button */}
-      <div className="space-y-3">
-        {speakingState === 'speaking' || speakingState === 'synthesizing' ? (
-          <button
-            onClick={handleStop}
-            className="w-full bg-red-500 text-white rounded-xl py-4 font-semibold flex items-center justify-center space-x-2 active:bg-red-600 transition-colors"
-          >
-            <Volume2 className="h-5 w-5 animate-pulse" />
-            <span>{speakingState === 'synthesizing' ? '正在合成...' : '正在播放...点击停止'}</span>
-          </button>
-        ) : (
-          <button
-            onClick={handleSynthesize}
-            disabled={!text.trim() || !selectedVPId}
-            className="w-full bg-indigo-600 text-white rounded-xl py-4 font-semibold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed active:bg-indigo-700 transition-colors"
-          >
-            <Volume2 className="h-5 w-5" />
-            <span>合成语音</span>
-          </button>
-        )}
-      </div>
+      {speakingState === 'speaking' || speakingState === 'synthesizing' ? (
+        <button
+          onClick={handleStop}
+          className="w-full bg-red-500 text-white rounded-xl py-4 font-semibold flex items-center justify-center space-x-2 active:bg-red-600 transition-colors"
+          aria-label="停止播放"
+        >
+          <Volume2 className="h-5 w-5 animate-pulse" />
+          <span>{speakingState === 'synthesizing' ? '正在合成...' : '正在播放...点击停止'}</span>
+        </button>
+      ) : (
+        <button
+          onClick={handleSynthesize}
+          disabled={!text.trim() || !selectedVPId}
+          className="w-full bg-indigo-600 text-white rounded-xl py-4 font-semibold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed active:bg-indigo-700 transition-colors"
+          aria-label="合成语音"
+        >
+          <Volume2 className="h-5 w-5" />
+          <span>合成语音</span>
+        </button>
+      )}
 
-      {/* Info note */}
       <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-700">
         <p className="font-medium mb-1">关于声音克隆</p>
         <p>
-          当前版本使用浏览器内置语音合成引擎，根据声纹音高特征调整输出。
-          完整的声音克隆功能需要接入 AI 语音合成服务（如 ElevenLabs、Azure Custom Neural Voice），
-          可实现高度逼真的声音复刻。应用架构已预留 API 接口，可随时扩展。
+          配置 ElevenLabs 或 Azure API Key（在设置页面）后可实现高保真声音克隆。
+          未配置 API Key 时使用浏览器离线合成引擎。支持多语言、情感控制等高级功能。
         </p>
       </div>
     </div>

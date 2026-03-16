@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, MessageSquare, Users, ChevronRight } from 'lucide-react';
+import { Mic, MessageSquare, Users, ChevronRight, ShoppingBag } from 'lucide-react';
 import type { AppView, VoicePrint } from '../types';
 
 interface HomeViewProps {
@@ -87,6 +87,22 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
                   ? `已保存 ${voicePrints.length} 个声纹`
                   : '暂无声纹档案'}
               </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-gray-300" />
+        </button>
+
+        <button
+          onClick={() => onNavigate('marketplace')}
+          className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 flex items-center justify-between active:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+              <ShoppingBag className="h-6 w-6 text-amber-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-semibold text-lg text-gray-900">声纹市场</p>
+              <p className="text-gray-400 text-sm">浏览和下载社区声纹</p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 text-gray-300" />
