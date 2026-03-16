@@ -113,7 +113,7 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
 
       {/* Advanced Features */}
       <div className="space-y-2">
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-1">高级功能</p>
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-1">{t('home.advancedFeatures')}</p>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => onNavigate('training')}
@@ -122,8 +122,8 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
             <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center mb-2">
               <GraduationCap className="h-5 w-5 text-teal-600" />
             </div>
-            <p className="font-medium text-sm text-gray-900">声纹训练</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">多段录制更精准</p>
+            <p className="font-medium text-sm text-gray-900">{t('training.title')}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t('training.description')}</p>
           </button>
 
           <button
@@ -134,8 +134,8 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
             <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center mb-2">
               <BookOpen className="h-5 w-5 text-blue-600" />
             </div>
-            <p className="font-medium text-sm text-gray-900">有声读物</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">长文本分段合成</p>
+            <p className="font-medium text-sm text-gray-900">{t('audiobook.title')}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t('audiobook.description')}</p>
           </button>
 
           <button
