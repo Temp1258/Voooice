@@ -36,6 +36,17 @@ const enUS: Record<string, string> = {
   'home.instruction2': '2. Save the recording as a voiceprint',
   'home.instruction3': '3. Go to "Text to Speech", select a voiceprint and enter text',
   'home.instruction4': '4. Tap synthesize to hear the voice speak your text',
+  'home.advancedFeatures': 'Advanced Features',
+
+  // Advanced features
+  'training.title': 'Voice Training',
+  'training.description': 'Multi-recording for better accuracy',
+  'audiobook.title': 'Audiobook',
+  'audiobook.description': 'Long text segmented synthesis',
+  'dialogue.title': 'Multi-role Dialogue',
+  'dialogue.description': 'Create dialogue scenes',
+  'apidocs.title': 'Open API',
+  'apidocs.description': 'Integrate into your apps',
 
   // Record page
   'record.title': 'Record Voice',
