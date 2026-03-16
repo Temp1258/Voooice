@@ -146,8 +146,8 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
             <div className="w-9 h-9 bg-pink-100 rounded-lg flex items-center justify-center mb-2">
               <MessageCircle className="h-5 w-5 text-pink-600" />
             </div>
-            <p className="font-medium text-sm text-gray-900">多角色对话</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">创建对话场景</p>
+            <p className="font-medium text-sm text-gray-900">{t('dialogue.title')}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t('dialogue.description')}</p>
           </button>
 
           <button
@@ -157,8 +157,8 @@ export function HomeView({ voicePrints, onNavigate }: HomeViewProps) {
             <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
               <Code className="h-5 w-5 text-gray-600" />
             </div>
-            <p className="font-medium text-sm text-gray-900">开放 API</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">集成到你的应用</p>
+            <p className="font-medium text-sm text-gray-900">{t('apidocs.title')}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t('apidocs.description')}</p>
           </button>
         </div>
       </div>
