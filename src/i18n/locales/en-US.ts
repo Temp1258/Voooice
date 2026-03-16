@@ -8,6 +8,7 @@ const enUS: Record<string, string> = {
   'nav.back': 'Back',
   'nav.settings': 'Settings',
   'nav.mainNav': 'Main navigation',
+  'nav.marketplace': 'Market',
 
   // Home page
   'home.welcomeTitle': 'Welcome to VocalText',
@@ -27,6 +28,14 @@ const enUS: Record<string, string> = {
   'home.step3Description': 'Name your voiceprint and save it locally',
   'home.step4Title': 'Synthesize Speech',
   'home.step4Description': 'Enter any text and have it read aloud in your voice',
+  'home.speakNeedRecord': 'Record a voice first',
+  'home.voiceprintsSaved': '{count} voiceprint(s) saved',
+  'home.voiceprintsEmpty': 'No voiceprints yet',
+  'home.marketplaceDescription': 'Browse and download community voiceprints',
+  'home.instruction1': '1. Tap "Record Voice" and read a passage aloud (10-30 seconds recommended)',
+  'home.instruction2': '2. Save the recording as a voiceprint',
+  'home.instruction3': '3. Go to "Text to Speech", select a voiceprint and enter text',
+  'home.instruction4': '4. Tap synthesize to hear the voice speak your text',
 
   // Record page
   'record.title': 'Record Voice',
@@ -43,6 +52,10 @@ const enUS: Record<string, string> = {
   'record.duration': 'Duration',
   'record.frequencyProfile': 'Frequency Profile',
   'record.saveButton': 'Save',
+  'record.uploadingToCloud': 'Uploading to cloud...',
+  'record.saving': 'Saving...',
+  'record.cloudSyncSuccess': 'Voiceprint synced to cloud voice cloning service',
+  'record.localSaveSuccessCloudFailed': 'Saved locally, cloud upload failed',
 
   // Voiceprints page
   'voiceprints.title': 'Voiceprints',
@@ -51,6 +64,7 @@ const enUS: Record<string, string> = {
   'voiceprints.deleteConfirm': 'Are you sure you want to delete this voiceprint? This action cannot be undone.',
   'voiceprints.play': 'Play',
   'voiceprints.createdDate': 'Created on {date}',
+  'voiceprints.emptyTitle': 'No Voiceprints',
 
   // Speak page
   'speak.title': 'Text to Speech',
@@ -72,6 +86,13 @@ const enUS: Record<string, string> = {
   'speak.speed': 'Speed',
   'speak.stability': 'Stability',
   'speak.similarity': 'Similarity',
+  'speak.noVoiceprints': 'No voiceprints available',
+  'speak.noVoiceprintsHint': 'Please record a voice and save a voiceprint first',
+  'speak.previewOriginal': 'Preview original recording',
+  'speak.emotionLabel': 'Emotion',
+  'speak.synthesizing': 'Synthesizing...',
+  'speak.playingClickStop': 'Playing... Tap to stop',
+  'speak.aboutCloningTitle': 'About Voice Cloning',
 
   // Auth
   'auth.login': 'Log In',
@@ -119,6 +140,17 @@ const enUS: Record<string, string> = {
   'marketplace.rating': 'Rating',
   'marketplace.author': 'Author',
   'marketplace.preview': 'Preview',
+  'marketplace.tenThousand': 'w',
+  'marketplace.latest': 'Latest',
+  'marketplace.free': 'Free',
+  'marketplace.backToMarket': '\u2190 Back to Market',
+  'marketplace.downloads': 'Downloads',
+  'marketplace.description': 'Description',
+  'marketplace.tags': 'Tags',
+  'marketplace.freeDownload': 'Free Download',
+  'marketplace.purchase': 'Buy \u00A5{price}',
+  'marketplace.noResults': 'No matching voices found',
+  'marketplace.tryOtherKeywords': 'Try different search terms',
 
   // Settings
   'settings.title': 'Settings',
@@ -128,6 +160,35 @@ const enUS: Record<string, string> = {
   'settings.notifications': 'Notifications',
   'settings.about': 'About',
   'settings.version': 'Version',
+  'settings.voiceEngine': 'Voice Engine',
+  'settings.voiceProvider': 'Voice Provider',
+  'settings.browserOffline': 'Browser Offline',
+  'settings.apiKey': 'API Key',
+  'settings.apiKeyPlaceholder': 'Enter API key...',
+  'settings.enterApiKey': 'Please enter an API key',
+  'settings.testing': 'Testing...',
+  'settings.testConnection': 'Test Connection',
+  'settings.connectionSuccess': 'Connected',
+  'settings.connectionFailed': 'Failed',
+  'settings.connected': 'Connected, {count} voice(s) available',
+  'settings.azureAuthFailed': 'Azure authentication failed (HTTP {status})',
+  'settings.azureConnected': 'Azure Speech service connected successfully',
+  'settings.storage': 'Storage',
+  'settings.usedStorage': 'Used Storage',
+  'settings.clearCache': 'Clear Cache',
+  'settings.clearCacheConfirm': 'Are you sure you want to clear the cache? This will not delete your voiceprint data.',
+  'settings.exportAllData': 'Export All Data',
+  'settings.notificationsAndSync': 'Notifications & Sync',
+  'settings.pushNotifications': 'Push Notifications',
+  'settings.autoSync': 'Auto Sync',
+  'settings.uiLanguage': 'Interface Language',
+  'settings.privacy': 'Privacy',
+  'settings.deleteAllData': 'Delete All Data',
+  'settings.deleteAllConfirm': 'Are you sure you want to delete all data? This cannot be undone. All voiceprints and settings will be permanently deleted.',
+  'settings.deleteAllConfirmAgain': 'Please confirm again: This will permanently delete all data. Continue?',
+  'settings.openSourceLicenses': 'Open Source Licenses',
+  'settings.notLoggedIn': 'Not logged in',
+  'settings.loginToSync': 'Log in to sync your data',
 
   // Errors
   'error.micPermission': 'Microphone permission denied. Please allow access in your system settings.',
@@ -136,6 +197,11 @@ const enUS: Record<string, string> = {
   'error.synthesisFailed': 'Speech synthesis failed. Please try again later.',
   'error.networkError': 'Network connection failed. Please check your network settings.',
   'error.storageFull': 'Storage is full. Please delete some voiceprints and try again.',
+  'error.unknown': 'Unknown error',
+  'error.title': 'Something Went Wrong',
+  'error.defaultMessage': 'The app encountered an unexpected error. Please try again or go back to the home page.',
+  'error.viewDetails': 'View error details',
+  'error.goHome': 'Go Home',
 
   // Common
   'common.save': 'Save',
