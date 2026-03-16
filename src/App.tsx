@@ -61,10 +61,10 @@ function App() {
     realtime: t('realtime.title'),
     marketplace: t('marketplace.title'),
     settings: t('settings.title'),
-    training: '声纹训练',
-    audiobook: '有声读物',
-    dialogue: '多角色对话',
-    apidocs: '开放 API',
+    training: t('training.title'),
+    audiobook: t('audiobook.title'),
+    dialogue: t('dialogue.title'),
+    apidocs: t('apidocs.title'),
   };
 
   const showBackButton = currentView !== 'home';
