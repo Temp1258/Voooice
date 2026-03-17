@@ -1,11 +1,28 @@
-import { StrictMode } from 'react'; // 开启 React 的严格模式，用于开发时帮助检测潜在问题
-import { createRoot } from 'react-dom/client'; // 从 react-dom 引入 createRoot，用于创建 React 应用的根节点
-import App from './App.tsx'; // 引入主应用组件
-import './index.css'; // 引入全局样式（TailwindCSS）
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { I18nProvider } from './i18n';
+import { AuthContextProvider } from './services/authService';
+import { CloudSyncProvider } from './services/cloudSyncService';
+import App from './App.tsx';
+import './index.css';
 
-// 将 React 应用挂载到 HTML 页面中的 id 为 'root' 的元素上
+// Register service worker for offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('SW registration failed:', err);
+    });
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App /> {/* 渲染主组件 App */}
+    <I18nProvider>
+      <AuthContextProvider>
+        <CloudSyncProvider>
+          <App />
+        </CloudSyncProvider>
+      </AuthContextProvider>
+    </I18nProvider>
   </StrictMode>
 );
