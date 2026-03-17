@@ -4,11 +4,12 @@
 // ---------------------------------------------------------------------------
 
 import { LocalTTSProvider } from './localTTSProvider';
+import type { EmotionType } from '../types';
 
 /** Options passed to every synthesis call. */
 export interface SynthesisOptions {
   language: string;
-  emotion: 'neutral' | 'happy' | 'sad' | 'angry' | 'excited' | 'calm';
+  emotion: EmotionType;
   speed: number;
   stability: number;
   similarity: number;

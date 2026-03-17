@@ -1,25 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Home, Mic, Users, MessageSquare, ArrowLeft, Settings, Radio } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { HomeView } from './components/HomeView';
-import { RecordView } from './components/RecordView';
-import { VoicePrintsView } from './components/VoicePrintsView';
-import { SpeakView } from './components/SpeakView';
-import { MarketplaceView } from './components/MarketplaceView';
-import { SettingsView } from './components/SettingsView';
-import { RealtimeView } from './components/RealtimeView';
-import { VoiceTrainingView } from './components/VoiceTrainingView';
-import { AudiobookView } from './components/AudiobookView';
-import { MultiRoleDialogueView } from './components/MultiRoleDialogueView';
-import { ApiDocsView } from './components/ApiDocsView';
-import { PricingView } from './components/PricingView';
 import { PaymentModal } from './components/PaymentModal';
-import { VoiceBankView } from './components/VoiceBankView';
 import { getAllVoicePrints } from './utils/storage';
 import { voiceCloneService } from './services/voiceCloneService';
 import { useI18n } from './i18n';
 import type { AppView, VoicePrint } from './types';
+
+// Lazy-loaded views for code splitting
+const RecordView = lazy(() => import('./components/RecordView').then(m => ({ default: m.RecordView })));
+const VoicePrintsView = lazy(() => import('./components/VoicePrintsView').then(m => ({ default: m.VoicePrintsView })));
+const SpeakView = lazy(() => import('./components/SpeakView').then(m => ({ default: m.SpeakView })));
+const MarketplaceView = lazy(() => import('./components/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
+const SettingsView = lazy(() => import('./components/SettingsView').then(m => ({ default: m.SettingsView })));
+const RealtimeView = lazy(() => import('./components/RealtimeView').then(m => ({ default: m.RealtimeView })));
+const VoiceTrainingView = lazy(() => import('./components/VoiceTrainingView').then(m => ({ default: m.VoiceTrainingView })));
+const AudiobookView = lazy(() => import('./components/AudiobookView').then(m => ({ default: m.AudiobookView })));
+const MultiRoleDialogueView = lazy(() => import('./components/MultiRoleDialogueView').then(m => ({ default: m.MultiRoleDialogueView })));
+const ApiDocsView = lazy(() => import('./components/ApiDocsView').then(m => ({ default: m.ApiDocsView })));
+const PricingView = lazy(() => import('./components/PricingView').then(m => ({ default: m.PricingView })));
+const VoiceBankView = lazy(() => import('./components/VoiceBankView').then(m => ({ default: m.VoiceBankView })));
 
 function App() {
   const { t } = useI18n();
@@ -80,6 +82,49 @@ function App() {
 
   const showBackButton = currentView !== 'home';
 
+  const handleSelectPlan = (plan: string) => {
+    const planInfo: Record<string, { name: string; amount: number; cycle: 'monthly' | 'yearly' | 'permanent' }> = {
+      creator: { name: t('pricing.creator'), amount: 29, cycle: 'monthly' },
+      voicebank: { name: t('pricing.voicebank'), amount: 99, cycle: 'yearly' },
+      studio: { name: t('pricing.studio'), amount: 299, cycle: 'monthly' },
+    };
+    const info = planInfo[plan];
+    if (info) {
+      setPaymentModal({ plan, planName: info.name, amount: info.amount, billingCycle: info.cycle });
+    }
+  };
+
+  const renderView = (): React.ReactNode => {
+    switch (currentView) {
+      case 'home':
+        return <HomeView voicePrints={voicePrints} onNavigate={setCurrentView} />;
+      case 'record':
+        return <RecordView onSaved={handleVoicePrintSaved} />;
+      case 'voiceprints':
+        return <VoicePrintsView voicePrints={voicePrints} onDeleted={handleVoicePrintDeleted} />;
+      case 'speak':
+        return <SpeakView voicePrints={voicePrints} />;
+      case 'realtime':
+        return <RealtimeView voicePrints={voicePrints} />;
+      case 'marketplace':
+        return <MarketplaceView />;
+      case 'settings':
+        return <SettingsView />;
+      case 'training':
+        return <VoiceTrainingView onComplete={handleVoicePrintSaved} onCancel={() => setCurrentView('home')} />;
+      case 'audiobook':
+        return <AudiobookView voicePrints={voicePrints} />;
+      case 'dialogue':
+        return <MultiRoleDialogueView voicePrints={voicePrints} />;
+      case 'apidocs':
+        return <ApiDocsView />;
+      case 'pricing':
+        return <PricingView onSelectPlan={handleSelectPlan} />;
+      case 'voicebank':
+        return <VoiceBankView voicePrints={voicePrints} onVoicePrintSaved={handleVoicePrintSaved} />;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -97,7 +142,7 @@ function App() {
     <ErrorBoundary onNavigateHome={() => setCurrentView('home')}>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Privacy consent */}
-        <PrivacyConsentModal onAccept={() => {}} />
+        <PrivacyConsentModal />
 
         {/* iOS-style navigation bar */}
         <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50 pt-safe">
@@ -133,61 +178,9 @@ function App() {
 
         {/* Main content */}
         <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6" role="main">
-          {currentView === 'home' && (
-            <HomeView voicePrints={voicePrints} onNavigate={setCurrentView} />
-          )}
-          {currentView === 'record' && (
-            <RecordView onSaved={handleVoicePrintSaved} />
-          )}
-          {currentView === 'voiceprints' && (
-            <VoicePrintsView
-              voicePrints={voicePrints}
-              onDeleted={handleVoicePrintDeleted}
-            />
-          )}
-          {currentView === 'speak' && (
-            <SpeakView voicePrints={voicePrints} />
-          )}
-          {currentView === 'realtime' && (
-            <RealtimeView voicePrints={voicePrints} />
-          )}
-          {currentView === 'marketplace' && (
-            <MarketplaceView />
-          )}
-          {currentView === 'settings' && (
-            <SettingsView />
-          )}
-          {currentView === 'training' && (
-            <VoiceTrainingView
-              onComplete={handleVoicePrintSaved}
-              onCancel={() => setCurrentView('home')}
-            />
-          )}
-          {currentView === 'audiobook' && (
-            <AudiobookView voicePrints={voicePrints} />
-          )}
-          {currentView === 'dialogue' && (
-            <MultiRoleDialogueView voicePrints={voicePrints} />
-          )}
-          {currentView === 'apidocs' && (
-            <ApiDocsView />
-          )}
-          {currentView === 'pricing' && (
-            <PricingView onSelectPlan={(plan) => {
-              const planInfo: Record<string, { name: string; amount: number; cycle: 'monthly' | 'yearly' | 'permanent' }> = {
-                creator: { name: t('pricing.creator'), amount: 29, cycle: 'monthly' },
-                voicebank: { name: t('pricing.voicebank'), amount: 99, cycle: 'yearly' },
-                studio: { name: t('pricing.studio'), amount: 299, cycle: 'monthly' },
-              };
-              const info = planInfo[plan];
-              if (info) {
-                setPaymentModal({ plan, planName: info.name, amount: info.amount, billingCycle: info.cycle });
-              }
-            }} />
-          )}
-          {currentView === 'voicebank' && (
-            <VoiceBankView voicePrints={voicePrints} onVoicePrintSaved={handleVoicePrintSaved} />
-          )}
+          <Suspense fallback={<div className="text-center text-gray-400 py-12">{t('common.loading')}</div>}>
+            {renderView()}
+          </Suspense>
         </main>
 
         {/* iOS-style tab bar */}

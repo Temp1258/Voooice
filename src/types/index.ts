@@ -73,14 +73,6 @@ export interface MarketplaceVoice {
 
 export type EmotionType = 'neutral' | 'happy' | 'sad' | 'angry' | 'excited' | 'calm';
 
-export interface SynthesisOptions {
-  language: string;
-  emotion: EmotionType;
-  speed: number;
-  stability: number;
-  similarity: number;
-}
-
 // Audiobook Workbench types
 export interface AudioBook {
   id: string;

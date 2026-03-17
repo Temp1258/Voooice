@@ -9,11 +9,12 @@
 import type { VoicePrint } from '../types';
 
 const DB_NAME = 'VocalTextDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const VOICEPRINTS_STORE = 'voiceprints';
 const AUDIO_BLOBS_STORE = 'audioBlobs';
 const KEYS_STORE = 'keys';
 const ENCRYPTION_KEY_ID = 'primary';
+const VOICEBANK_DRAFTS_STORE = 'voicebankDrafts';
 
 // ---------------------------------------------------------------------------
 // Database
@@ -40,6 +41,12 @@ function openDB(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(KEYS_STORE)) {
           db.createObjectStore(KEYS_STORE, { keyPath: 'id' });
+        }
+      }
+
+      if (oldVersion < 3) {
+        if (!db.objectStoreNames.contains(VOICEBANK_DRAFTS_STORE)) {
+          db.createObjectStore(VOICEBANK_DRAFTS_STORE, { keyPath: 'id' });
         }
       }
     };
@@ -311,6 +318,56 @@ export async function getAudioBlob(id: string): Promise<Blob | null> {
   const key = await ensureEncryptionKey();
   const iv = base64ToUint8(voiceprint.encryptionIv);
   return decryptBlob(record.encrypted, iv, key);
+}
+
+// ---------------------------------------------------------------------------
+// Voicebank draft recordings (IndexedDB instead of localStorage)
+// ---------------------------------------------------------------------------
+
+export interface VoicebankDraft {
+  id: string; // always 'current'
+  currentIndex: number;
+  completedIndices: number[];
+  /** Raw audio blobs keyed by prompt index */
+  recordings: Record<number, ArrayBuffer>;
+}
+
+const VOICEBANK_DRAFT_ID = 'current';
+
+/** Save voicebank recording draft to IndexedDB */
+export async function saveVoicebankDraft(draft: Omit<VoicebankDraft, 'id'>): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VOICEBANK_DRAFTS_STORE, 'readwrite');
+    const store = tx.objectStore(VOICEBANK_DRAFTS_STORE);
+    store.put({ ...draft, id: VOICEBANK_DRAFT_ID });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/** Load voicebank recording draft from IndexedDB */
+export async function getVoicebankDraft(): Promise<VoicebankDraft | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VOICEBANK_DRAFTS_STORE, 'readonly');
+    const store = tx.objectStore(VOICEBANK_DRAFTS_STORE);
+    const request = store.get(VOICEBANK_DRAFT_ID);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/** Delete voicebank recording draft */
+export async function deleteVoicebankDraft(): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VOICEBANK_DRAFTS_STORE, 'readwrite');
+    const store = tx.objectStore(VOICEBANK_DRAFTS_STORE);
+    store.delete(VOICEBANK_DRAFT_ID);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
 // ---------------------------------------------------------------------------

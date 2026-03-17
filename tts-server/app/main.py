@@ -9,6 +9,8 @@ be wired in.
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,14 +23,24 @@ from app.routes import synthesis, voices
 
 app = FastAPI(title="VocalText Local TTS Server", version="0.1.0")
 
+_default_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
+# CORS_ORIGINS env var: comma-separated list of allowed origins.
+# Set to "*" to allow all origins (not recommended for production).
+_env_origins = os.environ.get("CORS_ORIGINS")
+if _env_origins:
+    _allowed_origins = [o.strip() for o in _env_origins.split(",") if o.strip()]
+else:
+    _allowed_origins = _default_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
