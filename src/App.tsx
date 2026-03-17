@@ -39,10 +39,24 @@ function App() {
 
   useEffect(() => {
     loadVoicePrints();
-    // Restore API key if saved
-    const savedKey = localStorage.getItem('voooice_api_key');
-    if (savedKey) {
-      voiceCloneService.setApiKey(savedKey);
+    // Try local TTS server first (Edge-TTS backend), fall back to saved API key
+    const savedProvider = localStorage.getItem('voooice_provider');
+    if (savedProvider === 'local') {
+      voiceCloneService.setLocalProvider();
+    } else {
+      // Restore API key — prefer sessionStorage (cleared on tab close)
+      const savedKey = sessionStorage.getItem('voooice_api_key') || localStorage.getItem('voooice_api_key');
+      if (savedKey) {
+        voiceCloneService.setApiKey(savedKey);
+        // Migrate from localStorage to sessionStorage for security
+        if (localStorage.getItem('voooice_api_key')) {
+          sessionStorage.setItem('voooice_api_key', savedKey);
+          localStorage.removeItem('voooice_api_key');
+        }
+      } else {
+        // No API key set — try local TTS as default
+        voiceCloneService.setLocalProvider();
+      }
     }
   }, []);
 

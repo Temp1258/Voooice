@@ -87,18 +87,6 @@ def _speed_to_rate_str(speed: float) -> str:
     return f"{percent}%"
 
 
-def _pitch_to_str(pitch_hz: float | None) -> str:
-    """Convert reference pitch to Edge-TTS pitch adjustment."""
-    if pitch_hz is None:
-        return "+0Hz"
-    # Neutral pitch is ~200Hz for Edge-TTS voices; adjust relative to that
-    delta = int(pitch_hz - 200)
-    delta = max(-50, min(50, delta))  # clamp
-    if delta >= 0:
-        return f"+{delta}Hz"
-    return f"{delta}Hz"
-
-
 # ---------------------------------------------------------------------------
 # Edge-TTS synthesis
 # ---------------------------------------------------------------------------
@@ -108,10 +96,9 @@ async def _synthesize_with_edge_tts(
     text: str,
     voice: str,
     rate: str = "+0%",
-    pitch: str = "+0Hz",
 ) -> bytes:
     """Synthesize text using Edge-TTS and return MP3 bytes."""
-    communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+    communicate = edge_tts.Communicate(text, voice, rate=rate)
     audio_data = b""
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
@@ -183,13 +170,11 @@ async def text_to_speech(req: TTSRequest) -> StreamingResponse:
         try:
             edge_voice = _get_edge_voice(req.language, req.emotion)
             rate = _speed_to_rate_str(req.speed)
-            pitch = _pitch_to_str(voice.sample_rate)  # Use voice metadata as pitch reference
 
             audio_bytes = await _synthesize_with_edge_tts(
                 text=req.text,
                 voice=edge_voice,
                 rate=rate,
-                pitch="+0Hz",
             )
 
             return StreamingResponse(

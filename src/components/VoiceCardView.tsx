@@ -146,7 +146,14 @@ export function VoiceCardView({ voicePrints }: VoiceCardViewProps) {
       setIsPlaying(false);
       URL.revokeObjectURL(url);
     };
-    audio.play();
+    audio.onerror = () => {
+      setIsPlaying(false);
+      URL.revokeObjectURL(url);
+    };
+    audio.play().catch(() => {
+      setIsPlaying(false);
+      URL.revokeObjectURL(url);
+    });
     setIsPlaying(true);
   }, [audioBlob, isPlaying]);
 

@@ -69,17 +69,22 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
       if (audioBlob.size > 0) {
         const audioContext = new AudioContext();
         audioContextRef.current = audioContext;
-        const buffer = await audioContext.decodeAudioData(await audioBlob.arrayBuffer());
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContext.destination);
-        sourceRef.current = source;
-        source.onended = () => {
-          setSpeakingState('idle');
+        try {
+          const buffer = await audioContext.decodeAudioData(await audioBlob.arrayBuffer());
+          const source = audioContext.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioContext.destination);
+          sourceRef.current = source;
+          source.onended = () => {
+            setSpeakingState('idle');
+            audioContext.close();
+          };
+          setSpeakingState('speaking');
+          source.start();
+        } catch (decodeErr) {
           audioContext.close();
-        };
-        setSpeakingState('speaking');
-        source.start();
+          throw decodeErr;
+        }
       } else {
         // Web Speech fallback already played it via utterance
         setSpeakingState('speaking');
@@ -100,20 +105,23 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
 
   const handlePlayOriginal = async () => {
     if (!selectedVP) return;
+    let audioContext: AudioContext | null = null;
     try {
       const blob = await getAudioBlob(selectedVP.id);
       if (!blob) return;
-      const audioContext = new AudioContext();
+      audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       const buffer = await blobToAudioBuffer(blob, audioContext);
       const source = audioContext.createBufferSource();
       source.buffer = buffer;
       source.connect(audioContext.destination);
       sourceRef.current = source;
-      source.onended = () => audioContext.close();
+      const ctx = audioContext; // capture for closure
+      source.onended = () => ctx.close();
       source.start();
     } catch (err) {
       console.error('Failed to play original:', err);
+      audioContext?.close();
     }
   };
 
@@ -380,15 +388,22 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
               <button
                 onClick={async () => {
                   if (!lastSynthesizedBlob) return;
-                  const audioContext = new AudioContext();
-                  audioContextRef.current = audioContext;
-                  const buffer = await audioContext.decodeAudioData(await lastSynthesizedBlob.arrayBuffer());
-                  const source = audioContext.createBufferSource();
-                  source.buffer = buffer;
-                  source.connect(audioContext.destination);
-                  sourceRef.current = source;
-                  source.onended = () => audioContext.close();
-                  source.start();
+                  let ctx: AudioContext | null = null;
+                  try {
+                    ctx = new AudioContext();
+                    audioContextRef.current = ctx;
+                    const buffer = await ctx.decodeAudioData(await lastSynthesizedBlob.arrayBuffer());
+                    const source = ctx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(ctx.destination);
+                    sourceRef.current = source;
+                    const capturedCtx = ctx;
+                    source.onended = () => capturedCtx.close();
+                    source.start();
+                  } catch (err) {
+                    console.error('Failed to play synthesized:', err);
+                    ctx?.close();
+                  }
                 }}
                 className="flex-1 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 active:bg-indigo-100"
               >

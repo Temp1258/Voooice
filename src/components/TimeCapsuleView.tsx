@@ -61,11 +61,16 @@ export function TimeCapsuleView({ voicePrints }: TimeCapsuleViewProps) {
   useEffect(() => {
     const interval = setInterval(() => {
       setCapsules(prev => {
-        const updated = prev.map(c => ({
-          ...c,
-          isUnlocked: c.isUnlocked || Date.now() >= c.unlockAt,
-        }));
-        if (JSON.stringify(updated) !== JSON.stringify(prev)) {
+        const now = Date.now();
+        let changed = false;
+        const updated = prev.map(c => {
+          if (!c.isUnlocked && now >= c.unlockAt) {
+            changed = true;
+            return { ...c, isUnlocked: true };
+          }
+          return c;
+        });
+        if (changed) {
           saveCapsules(updated);
           return updated;
         }
@@ -148,7 +153,11 @@ export function TimeCapsuleView({ voicePrints }: TimeCapsuleViewProps) {
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
-    const blob = new Blob([bytes], { type: 'audio/mpeg' });
+    // Detect format from magic bytes: MP3 starts with 0xFF 0xFB or "ID3"
+    const isMP3 = (bytes[0] === 0xFF && (bytes[1] & 0xE0) === 0xE0) ||
+                  (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33);
+    const mimeType = isMP3 ? 'audio/mpeg' : 'audio/wav';
+    const blob = new Blob([bytes], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     audioRef.current = audio;
@@ -156,7 +165,14 @@ export function TimeCapsuleView({ voicePrints }: TimeCapsuleViewProps) {
       setPlayingId(null);
       URL.revokeObjectURL(url);
     };
-    audio.play();
+    audio.onerror = () => {
+      setPlayingId(null);
+      URL.revokeObjectURL(url);
+    };
+    audio.play().catch(() => {
+      setPlayingId(null);
+      URL.revokeObjectURL(url);
+    });
     setPlayingId(capsule.id);
   }, [playingId]);
 

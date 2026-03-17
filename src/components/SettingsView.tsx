@@ -132,21 +132,64 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
 
   const handleClearCache = () => {
     if (confirm(t('settings.clearCacheConfirm'))) {
-      // Clear cache logic
-      console.log('Cache cleared');
+      // Clear synthesized audio cache from sessionStorage
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith('voooice_cache_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => sessionStorage.removeItem(k));
+      // Clear time capsules audio (keep metadata)
+      try {
+        const capsules = JSON.parse(localStorage.getItem('voooice_time_capsules') || '[]');
+        const stripped = capsules.map((c: Record<string, unknown>) => ({ ...c, audioData: undefined }));
+        localStorage.setItem('voooice_time_capsules', JSON.stringify(stripped));
+      } catch { /* ignore */ }
     }
   };
 
-  const handleExportData = () => {
-    console.log('Exporting data...');
+  const handleExportData = async () => {
+    try {
+      const { getAllVoicePrints } = await import('../utils/storage');
+      const voicePrints = await getAllVoicePrints();
+      const capsules = localStorage.getItem('voooice_time_capsules') || '[]';
+      const exportData = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        voicePrints: voicePrints.map(vp => ({ ...vp, audioData: undefined })),
+        timeCapsules: JSON.parse(capsules),
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voooice_export_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
   };
 
-  const handleDeleteAllData = () => {
+  const handleDeleteAllData = async () => {
     if (
       confirm(t('settings.deleteAllConfirm'))
     ) {
       if (confirm(t('settings.deleteAllConfirmAgain'))) {
-        console.log('All data deleted');
+        // Clear IndexedDB voice data
+        try {
+          const databases = await indexedDB.databases();
+          for (const db of databases) {
+            if (db.name) indexedDB.deleteDatabase(db.name);
+          }
+        } catch { /* indexedDB.databases() not supported everywhere */ }
+        // Clear all storage
+        localStorage.clear();
+        sessionStorage.clear();
+        // Reload to reset app state
+        window.location.reload();
       }
     }
   };
