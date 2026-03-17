@@ -36,6 +36,7 @@ const zhCN: Record<string, string> = {
   'home.instruction2': '2. 录制完成后保存为声纹档案',
   'home.instruction3': '3. 在「文字转语音」中选择声纹并输入文字',
   'home.instruction4': '4. 点击合成，即可听到模仿该声纹的语音',
+  'home.creativeTools': '创作工具',
   'home.advancedFeatures': '高级功能',
 
   // Advanced features

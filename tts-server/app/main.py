@@ -10,9 +10,12 @@ be wired in.
 from __future__ import annotations
 
 import os
+import time
+from collections import defaultdict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.models.schemas import EdgeVoiceInfo, HealthResponse
 from app.routes import synthesis, voices
@@ -45,6 +48,41 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------------------------------------------------------------------
+# Simple in-memory rate limiter middleware
+# ---------------------------------------------------------------------------
+
+_rate_limit_store: dict[str, list[float]] = defaultdict(list)
+_RATE_LIMIT_MAX = 20  # requests per window
+_RATE_LIMIT_WINDOW = 60.0  # seconds
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+
+    # Clean old entries
+    _rate_limit_store[client_ip] = [
+        t for t in _rate_limit_store[client_ip] if now - t < _RATE_LIMIT_WINDOW
+    ]
+
+    if len(_rate_limit_store[client_ip]) >= _RATE_LIMIT_MAX:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests. Please try again later."},
+            headers={"Retry-After": str(int(_RATE_LIMIT_WINDOW))},
+        )
+
+    _rate_limit_store[client_ip].append(now)
+    response = await call_next(request)
+    response.headers["X-RateLimit-Limit"] = str(_RATE_LIMIT_MAX)
+    response.headers["X-RateLimit-Remaining"] = str(
+        max(0, _RATE_LIMIT_MAX - len(_rate_limit_store[client_ip]))
+    )
+    return response
+
 
 # Register routers
 app.include_router(synthesis.router)

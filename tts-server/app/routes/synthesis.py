@@ -20,6 +20,10 @@ from app.routes.voices import get_voices_store
 
 router = APIRouter()
 
+# Concurrency limiter: max 5 simultaneous Edge-TTS requests
+# Prevents flooding Microsoft's service and getting rate-limited
+_tts_semaphore = asyncio.Semaphore(5)
+
 # ---------------------------------------------------------------------------
 # Available models & Edge-TTS voice mapping
 # ---------------------------------------------------------------------------
@@ -97,13 +101,17 @@ async def _synthesize_with_edge_tts(
     voice: str,
     rate: str = "+0%",
 ) -> bytes:
-    """Synthesize text using Edge-TTS and return MP3 bytes."""
-    communicate = edge_tts.Communicate(text, voice, rate=rate)
-    audio_data = b""
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_data += chunk["data"]
-    return audio_data
+    """Synthesize text using Edge-TTS and return MP3 bytes.
+
+    Uses a semaphore to limit concurrent requests to Microsoft's service.
+    """
+    async with _tts_semaphore:
+        communicate = edge_tts.Communicate(text, voice, rate=rate)
+        audio_data = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data += chunk["data"]
+        return audio_data
 
 
 # ---------------------------------------------------------------------------

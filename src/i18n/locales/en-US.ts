@@ -36,6 +36,7 @@ const enUS: Record<string, string> = {
   'home.instruction2': '2. Save the recording as a voiceprint',
   'home.instruction3': '3. Go to "Text to Speech", select a voiceprint and enter text',
   'home.instruction4': '4. Tap synthesize to hear the voice speak your text',
+  'home.creativeTools': 'Creative Tools',
   'home.advancedFeatures': 'Advanced Features',
 
   // Advanced features
