@@ -3,8 +3,9 @@
  * Falls back to local mock data when the backend is unavailable.
  */
 import type { MarketplaceVoice } from '../types';
+import { API_BASE_URL } from '../config';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
+const API_BASE = API_BASE_URL;
 
 class MarketplaceService {
   private token: string | null = null;

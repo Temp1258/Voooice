@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Mic, MicOff, ChevronLeft, ChevronRight, Check, Save, Play, Pause,
+  Mic, ChevronLeft, ChevronRight, Check, Save, Play, Pause,
   Star, Shield, Mail, Clock, Lock, Heart, RotateCcw, Volume2, Send,
   Info, Square,
 } from 'lucide-react';

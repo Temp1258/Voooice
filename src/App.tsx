@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Mic, Users, MessageSquare, ArrowLeft, ShoppingBag, Settings, Radio } from 'lucide-react';
+import { Home, Mic, Users, MessageSquare, ArrowLeft, Settings, Radio } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { HomeView } from './components/HomeView';
