@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'vocaltext-dev-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'voooice-dev-secret-change-in-production';
 
 function authenticateToken(req, res, next) {
   try {

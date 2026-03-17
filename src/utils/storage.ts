@@ -8,7 +8,7 @@
  */
 import type { VoicePrint } from '../types';
 
-const DB_NAME = 'VocalTextDB';
+const DB_NAME = 'VoooiceDB';
 const DB_VERSION = 3;
 const VOICEPRINTS_STORE = 'voiceprints';
 const AUDIO_BLOBS_STORE = 'audioBlobs';

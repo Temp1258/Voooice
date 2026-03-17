@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Lock, Eye, FileText } from 'lucide-react';
 import { useI18n } from '../i18n';
 
-const CONSENT_KEY = 'vocaltext_privacy_consent';
-const CONSENT_TIMESTAMP_KEY = 'vocaltext_privacy_consent_ts';
+const CONSENT_KEY = 'voooice_privacy_consent';
+const CONSENT_TIMESTAMP_KEY = 'voooice_privacy_consent_ts';
 
 interface PrivacyConsentModalProps {
   onAccept?: () => void;

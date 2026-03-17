@@ -156,7 +156,7 @@ export function CloudSyncProvider({ children }: { children: React.ReactNode }) {
 
   const triggerSync = useCallback(
     async (localPrints: VoicePrint[] = []): Promise<SyncResult | null> => {
-      const token = localStorage.getItem('vocaltext_token');
+      const token = localStorage.getItem('voooice_token');
       if (!token || token === 'local') return null;
 
       setStatus(prev => ({ ...prev, syncing: true, error: null }));

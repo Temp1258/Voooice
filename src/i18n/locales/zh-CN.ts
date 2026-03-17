@@ -11,7 +11,7 @@ const zhCN: Record<string, string> = {
   'nav.marketplace': '市场',
 
   // Home page
-  'home.welcomeTitle': '欢迎使用 VocalText',
+  'home.welcomeTitle': '欢迎使用 Voooice',
   'home.welcomeDescription': '录制你的声音，创建专属声纹，用你的声音朗读任何文字。',
   'home.recordButton': '录制声音',
   'home.speakButton': '文字转语音',
@@ -171,7 +171,7 @@ const zhCN: Record<string, string> = {
 
   // Privacy
   'privacy.consentTitle': '隐私权限',
-  'privacy.consentDescription': '为了提供语音录制和合成服务，VocalText 需要收集和处理一些数据。请阅读以下说明：',
+  'privacy.consentDescription': '为了提供语音录制和合成服务，Voooice 需要收集和处理一些数据。请阅读以下说明：',
   'privacy.accept': '同意并继续',
   'privacy.decline': '拒绝',
   'privacy.policyLink': '隐私政策',
@@ -351,6 +351,26 @@ const zhCN: Record<string, string> = {
   'audiobook.status.error': '错误',
 
   // Pricing
+  // Voice Card
+  'voicecard.title': '声音明信片',
+  'voicecard.subtitle': '用你的声音，传递温暖的心意',
+  'voicecard.homeDesc': '声音祝福卡片',
+  'voicecard.selectVoice': '选择声音',
+  'voicecard.messageLabel': '祝福语',
+  'voicecard.messagePlaceholder': '写下你想说的话...',
+  'voicecard.placeholder': '在此输入你的祝福...',
+  'voicecard.generate': '生成声音卡片',
+  'voicecard.generating': '正在生成...',
+  'voicecard.play': '播放',
+  'voicecard.pause': '暂停',
+  'voicecard.share': '分享',
+  'voicecard.shareTitle': 'Voooice 声音明信片',
+  'voicecard.shareText': '来自{name}的声音祝福 — Voooice',
+  'voicecard.template.birthday': '生日',
+  'voicecard.template.love': '表白',
+  'voicecard.template.thanks': '感谢',
+  'voicecard.template.greeting': '问候',
+
   'pricing.title': '套餐方案',
   'pricing.subtitle': '选择适合你的方案',
   'pricing.monthly': '月付',
@@ -454,9 +474,14 @@ const zhCN: Record<string, string> = {
   'voicebank.nextPrompt': '下一段',
   'voicebank.previousPrompt': '上一段',
   'voicebank.saveAndContinueLater': '保存并稍后继续',
+  'voicebank.quickMode': '快速模式',
+  'voicebank.fullMode': '完整模式',
+  'voicebank.quickModeDesc': '8段核心语句，约3分钟即可创建声纹',
+  'voicebank.fullModeDesc': '50段完整录音，获得最精确的声纹效果',
+  'voicebank.upgradeToFull': '升级到完整模式获取更精确声纹',
   'voicebank.saveVoicePrint': '保存声纹',
   'voicebank.recordingDuration': '录音时长: {duration}秒',
-  'voicebank.allPromptsCompleted': '所有50段录音已完成！',
+  'voicebank.allPromptsCompleted': '所有录音已完成！',
   'voicebank.savingVoicePrint': '正在保存声纹...',
   'voicebank.voicePrintSaved': '声纹已保存！',
   'voicebank.progressSaved': '进度已保存',

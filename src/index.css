@@ -61,6 +61,32 @@ button:active {
   transition: transform 0.1s;
 }
 
+/* Mobile-friendly touch targets */
+@media (max-width: 640px) {
+  /* Larger tap targets on small screens */
+  .recording-btn-mobile {
+    min-width: 5rem;
+    min-height: 5rem;
+  }
+
+  /* Full-width modals on mobile */
+  .modal-mobile {
+    max-width: 100%;
+    border-radius: 1rem 1rem 0 0;
+    margin: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}
+
+/* Prevent bounce when recording */
+.recording-active {
+  touch-action: none;
+  overflow: hidden;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

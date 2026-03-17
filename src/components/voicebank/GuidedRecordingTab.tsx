@@ -12,7 +12,8 @@ import {
 } from '../../utils/storage';
 import { extractFrequencyProfile, estimateAveragePitch } from '../../utils/audioAnalyzer';
 import type { VoicePrint } from '../../types';
-import { ALL_PROMPTS, getQualityStars, getSupportedMimeType, StarRating } from './shared';
+import { ALL_PROMPTS, QUICK_PROMPTS, getQualityStars, getSupportedMimeType, StarRating, type RecordingMode } from './shared';
+import { Zap, BookOpen } from 'lucide-react';
 
 interface GuidedRecordingTabProps {
   onVoicePrintSaved: (vp: VoicePrint) => void;
@@ -20,6 +21,11 @@ interface GuidedRecordingTabProps {
 
 export function GuidedRecordingTab({ onVoicePrintSaved }: GuidedRecordingTabProps) {
   const { t, locale } = useI18n();
+
+  // Mode state
+  const [mode, setMode] = useState<RecordingMode>('quick');
+  const activePrompts = mode === 'quick' ? QUICK_PROMPTS : ALL_PROMPTS;
+  const totalPrompts = activePrompts.length;
 
   // Progress state
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -166,10 +172,10 @@ export function GuidedRecordingTab({ onVoicePrintSaved }: GuidedRecordingTabProp
     setCurrentDuration(0);
     persistProgress(currentIndex, newCompleted, newRecordings);
 
-    if (currentIndex < ALL_PROMPTS.length - 1) {
+    if (currentIndex < totalPrompts - 1) {
       setCurrentIndex(currentIndex + 1);
     }
-  }, [currentBlob, currentIndex, completedIndices, recordings, persistProgress]);
+  }, [currentBlob, currentIndex, completedIndices, recordings, persistProgress, totalPrompts]);
 
   const playCurrentRecording = useCallback(() => {
     if (!currentBlob) return;
@@ -270,13 +276,53 @@ export function GuidedRecordingTab({ onVoicePrintSaved }: GuidedRecordingTabProp
     );
   }
 
-  const currentPrompt = ALL_PROMPTS[currentIndex];
+  const currentPrompt = activePrompts[currentIndex];
   const completedCount = completedIndices.length;
-  const qualityStars = getQualityStars(completedCount);
-  const progressPercent = (completedCount / 50) * 100;
+  const qualityStars = getQualityStars(mode === 'quick' ? completedCount * 6 : completedCount);
+  const progressPercent = (completedCount / totalPrompts) * 100;
+
+  const handleSwitchMode = (newMode: RecordingMode) => {
+    if (newMode === mode) return;
+    setMode(newMode);
+    setCurrentIndex(0);
+    setCurrentBlob(null);
+    setCurrentDuration(0);
+    // Keep recordings — they may overlap between modes
+  };
 
   return (
     <div className="space-y-4">
+      {/* Mode selector */}
+      <div className="bg-white rounded-2xl p-3 border border-gray-200">
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleSwitchMode('quick')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              mode === 'quick'
+                ? 'bg-rose-500 text-white shadow-sm'
+                : 'bg-gray-50 text-gray-600 active:bg-gray-100'
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            {t('voicebank.quickMode')}
+          </button>
+          <button
+            onClick={() => handleSwitchMode('full')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              mode === 'full'
+                ? 'bg-rose-500 text-white shadow-sm'
+                : 'bg-gray-50 text-gray-600 active:bg-gray-100'
+            }`}
+          >
+            <BookOpen className="h-4 w-4" />
+            {t('voicebank.fullMode')}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 text-center mt-2">
+          {mode === 'quick' ? t('voicebank.quickModeDesc') : t('voicebank.fullModeDesc')}
+        </p>
+      </div>
+
       {/* Progress bar */}
       <div className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3">
         <div className="flex items-center justify-between">
@@ -294,7 +340,7 @@ export function GuidedRecordingTab({ onVoicePrintSaved }: GuidedRecordingTabProp
         </div>
       </div>
 
-      {completedCount >= 50 ? (
+      {completedCount >= totalPrompts ? (
         <div className="bg-white rounded-2xl p-6 text-center space-y-4 border border-gray-200">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
             <Check className="h-8 w-8 text-green-600" />
@@ -304,6 +350,14 @@ export function GuidedRecordingTab({ onVoicePrintSaved }: GuidedRecordingTabProp
           <button onClick={() => setShowSaveDialog(true)} className="px-6 py-3 bg-rose-500 text-white rounded-xl font-medium active:bg-rose-600">
             {t('voicebank.saveVoicePrint')}
           </button>
+          {mode === 'quick' && (
+            <button
+              onClick={() => handleSwitchMode('full')}
+              className="px-5 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-medium active:bg-gray-200"
+            >
+              {t('voicebank.upgradeToFull')}
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -313,7 +367,7 @@ export function GuidedRecordingTab({ onVoicePrintSaved }: GuidedRecordingTabProp
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700">
                 {t(currentPrompt.categoryKey)}
               </span>
-              <span className="text-xs text-gray-400">{currentIndex + 1} / 50</span>
+              <span className="text-xs text-gray-400">{currentIndex + 1} / {totalPrompts}</span>
             </div>
 
             {completedIndices.includes(currentIndex) && !currentBlob && !isRecording && (
@@ -377,8 +431,8 @@ export function GuidedRecordingTab({ onVoicePrintSaved }: GuidedRecordingTabProp
               {t('voicebank.previousPrompt')}
             </button>
             <button
-              onClick={() => { setCurrentIndex(Math.min(ALL_PROMPTS.length - 1, currentIndex + 1)); setCurrentBlob(null); setCurrentDuration(0); }}
-              disabled={currentIndex === ALL_PROMPTS.length - 1 || isRecording}
+              onClick={() => { setCurrentIndex(Math.min(totalPrompts - 1, currentIndex + 1)); setCurrentBlob(null); setCurrentDuration(0); }}
+              disabled={currentIndex === totalPrompts - 1 || isRecording}
               className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 disabled:opacity-30 active:text-gray-800"
             >
               {t('voicebank.nextPrompt')}

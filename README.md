@@ -1,6 +1,6 @@
-# VocalText: Voice-to-Doc
+# Voooice: Voice-to-Doc
 
-**VocalText** is a sample web app that records audio from your microphone, processes it into text, and displays or downloads the transcript. It’s intended as a starting point for building a production-ready, offline speech-to-text solution—no cloud required.
+**Voooice** is a sample web app that records audio from your microphone, processes it into text, and displays or downloads the transcript. It’s intended as a starting point for building a production-ready, offline speech-to-text solution—no cloud required.
 
 ---
 

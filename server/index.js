@@ -44,7 +44,7 @@ app.use((err, req, res, _next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`VocalText server running on http://localhost:${PORT}`);
+  console.log(`Voooice server running on http://localhost:${PORT}`);
 });
 
 module.exports = app;

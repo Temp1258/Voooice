@@ -22,6 +22,7 @@ const MultiRoleDialogueView = lazy(() => import('./components/MultiRoleDialogueV
 const ApiDocsView = lazy(() => import('./components/ApiDocsView').then(m => ({ default: m.ApiDocsView })));
 const PricingView = lazy(() => import('./components/PricingView').then(m => ({ default: m.PricingView })));
 const VoiceBankView = lazy(() => import('./components/VoiceBankView').then(m => ({ default: m.VoiceBankView })));
+const VoiceCardView = lazy(() => import('./components/VoiceCardView').then(m => ({ default: m.VoiceCardView })));
 
 function App() {
   const { t } = useI18n();
@@ -38,7 +39,7 @@ function App() {
   useEffect(() => {
     loadVoicePrints();
     // Restore API key if saved
-    const savedKey = localStorage.getItem('vocaltext_api_key');
+    const savedKey = localStorage.getItem('voooice_api_key');
     if (savedKey) {
       voiceCloneService.setApiKey(savedKey);
     }
@@ -65,7 +66,7 @@ function App() {
   };
 
   const viewTitle: Record<AppView, string> = {
-    home: 'VocalText',
+    home: 'Voooice',
     record: t('record.title'),
     voiceprints: t('voiceprints.title'),
     speak: t('speak.title'),
@@ -78,6 +79,7 @@ function App() {
     apidocs: t('apidocs.title'),
     pricing: t('pricing.title'),
     voicebank: t('voicebank.title'),
+    voicecard: t('voicecard.title'),
   };
 
   const showBackButton = currentView !== 'home';
@@ -122,6 +124,8 @@ function App() {
         return <PricingView onSelectPlan={handleSelectPlan} />;
       case 'voicebank':
         return <VoiceBankView voicePrints={voicePrints} onVoicePrintSaved={handleVoicePrintSaved} />;
+      case 'voicecard':
+        return <VoiceCardView voicePrints={voicePrints} />;
     }
   };
 

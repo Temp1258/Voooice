@@ -1,7 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'vocaltext.db');
+const DB_PATH = path.join(__dirname, 'voooice.db');
 
 const db = new Database(DB_PATH);
 

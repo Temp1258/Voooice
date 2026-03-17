@@ -27,7 +27,7 @@ export interface PlanInfo {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('vocaltext_auth_token');
+  const token = localStorage.getItem('voooice_auth_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };

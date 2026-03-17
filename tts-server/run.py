@@ -1,4 +1,4 @@
-"""Simple entry point for the VocalText Local TTS Server."""
+"""Simple entry point for the Voooice Local TTS Server."""
 
 import uvicorn
 

@@ -55,4 +55,13 @@ export const ALL_PROMPTS: PromptItem[] = (() => {
   return prompts;
 })();
 
-export const LEGACY_KEY = 'vocaltext_voice_legacy';
+/**
+ * Quick mode: 8 curated prompts covering all categories for a ~3-minute session.
+ * Indices refer to positions in ALL_PROMPTS (0-based).
+ */
+export const QUICK_PROMPT_INDICES = [0, 4, 10, 14, 20, 24, 30, 40];
+export const QUICK_PROMPTS: PromptItem[] = QUICK_PROMPT_INDICES.map(i => ALL_PROMPTS[i]);
+
+export type RecordingMode = 'quick' | 'full';
+
+export const LEGACY_KEY = 'voooice_voice_legacy';

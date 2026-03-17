@@ -122,7 +122,7 @@ export async function shareAudio(
     const file = new File([blob], filename, { type: blob.type || 'audio/wav' });
     const shareData: ShareData = {
       title,
-      text: text || `由 VocalText 生成的语音 - ${title}`,
+      text: text || `由 Voooice 生成的语音 - ${title}`,
       files: [file],
     };
 
@@ -155,7 +155,7 @@ export async function exportSynthesizedAudio(
 ): Promise<void> {
   const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
   const safeName = voiceName.replace(/[^\w\u4e00-\u9fff]/g, '_').slice(0, 20);
-  const filename = `VocalText_${safeName}_${timestamp}.${format}`;
+  const filename = `Voooice_${safeName}_${timestamp}.${format}`;
 
   // If the blob is already in the right format, use it directly
   downloadBlob(audioBlob, filename);

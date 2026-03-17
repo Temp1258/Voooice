@@ -35,7 +35,7 @@ export class ErrorBoundary extends React.Component<
 
   private getLocale(): Locale {
     try {
-      const stored = localStorage.getItem('vocaltext-locale');
+      const stored = localStorage.getItem('voooice-locale');
       if (stored === 'zh-CN' || stored === 'en-US') return stored;
     } catch {}
     return 'zh-CN';

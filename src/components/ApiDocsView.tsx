@@ -21,7 +21,7 @@ export function ApiDocsView({ apiKey }: ApiDocsViewProps) {
       method: 'POST',
       endpoint: '/api/v1/synthesis',
       description: '使用指定声纹将文字转换为语音',
-      curl: `curl -X POST https://api.vocaltext.app/v1/synthesis \\
+      curl: `curl -X POST https://api.voooice.app/v1/synthesis \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -47,7 +47,7 @@ X-Credits-Remaining: 99
       method: 'GET',
       endpoint: '/api/v1/voiceprints',
       description: '获取当前用户所有的声纹列表',
-      curl: `curl https://api.vocaltext.app/v1/voiceprints \\
+      curl: `curl https://api.voooice.app/v1/voiceprints \\
   -H "Authorization: Bearer YOUR_API_KEY"`,
       response: `{
   "voiceprints": [
@@ -68,7 +68,7 @@ X-Credits-Remaining: 99
       method: 'POST',
       endpoint: '/api/v1/voiceprints',
       description: '上传音频文件创建新声纹',
-      curl: `curl -X POST https://api.vocaltext.app/v1/voiceprints \\
+      curl: `curl -X POST https://api.voooice.app/v1/voiceprints \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -F "name=新声纹" \\
   -F "audio=@recording.wav" \\
@@ -85,7 +85,7 @@ X-Credits-Remaining: 99
       method: 'DELETE',
       endpoint: '/api/v1/voiceprints/:id',
       description: '删除指定声纹及其关联的音频数据',
-      curl: `curl -X DELETE https://api.vocaltext.app/v1/voiceprints/vp_xxxxxxxx \\
+      curl: `curl -X DELETE https://api.voooice.app/v1/voiceprints/vp_xxxxxxxx \\
   -H "Authorization: Bearer YOUR_API_KEY"`,
       response: `{
   "deleted": true,
@@ -104,7 +104,7 @@ X-Credits-Remaining: 99
     <div className="space-y-5">
       <div className="text-center">
         <h2 className="text-xl font-bold text-gray-900 mb-1">开放 API</h2>
-        <p className="text-gray-500 text-sm">将 VocalText 语音合成能力集成到你的应用中</p>
+        <p className="text-gray-500 text-sm">将 Voooice 语音合成能力集成到你的应用中</p>
       </div>
 
       {/* API Key section */}
@@ -139,7 +139,7 @@ X-Credits-Remaining: 99
           <h3 className="font-semibold text-gray-900">基础 URL</h3>
         </div>
         <code className="block bg-gray-100 rounded-lg px-3 py-2 text-sm font-mono text-gray-700">
-          https://api.vocaltext.app/v1
+          https://api.voooice.app/v1
         </code>
       </div>
 

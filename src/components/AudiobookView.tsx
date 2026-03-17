@@ -16,7 +16,7 @@ import type {
 // Constants & Helpers
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = 'vocaltext_audiobooks';
+const STORAGE_KEY = 'voooice_audiobooks';
 const EMOTION_OPTIONS: EmotionType[] = ['neutral', 'happy', 'sad', 'angry', 'excited', 'calm'];
 const ROLE_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
 const MAX_SEGMENT_LENGTH = 500;

@@ -1,5 +1,5 @@
 """
-VocalText Local TTS Server
+Voooice Local TTS Server
 ===========================
 FastAPI application that exposes voice cloning and text-to-speech synthesis
 via a simple REST API.  For the MVP the TTS endpoint returns a placeholder
@@ -21,7 +21,7 @@ from app.routes import synthesis, voices
 # App setup
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="VocalText Local TTS Server", version="0.1.0")
+app = FastAPI(title="Voooice Local TTS Server", version="0.1.0")
 
 _default_origins = [
     "http://localhost:3000",

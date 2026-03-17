@@ -521,7 +521,7 @@ export function SettingsView({ onNavigateHome }: SettingsViewProps) {
             iconBg="bg-gray-50"
             label="GitHub"
             onClick={() =>
-              window.open('https://github.com/vocaltext/vocaltext', '_blank')
+              window.open('https://github.com/voooice/voooice', '_blank')
             }
           />
           <SettingRow

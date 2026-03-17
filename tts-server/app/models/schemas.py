@@ -1,5 +1,5 @@
 """
-Pydantic models for the VocalText Local TTS Server API.
+Pydantic models for the Voooice Local TTS Server API.
 """
 
 from __future__ import annotations

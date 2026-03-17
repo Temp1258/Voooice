@@ -11,7 +11,7 @@ const enUS: Record<string, string> = {
   'nav.marketplace': 'Market',
 
   // Home page
-  'home.welcomeTitle': 'Welcome to VocalText',
+  'home.welcomeTitle': 'Welcome to Voooice',
   'home.welcomeDescription': 'Record your voice, create a unique voiceprint, and use it to speak any text.',
   'home.recordButton': 'Record Voice',
   'home.speakButton': 'Text to Speech',
@@ -171,7 +171,7 @@ const enUS: Record<string, string> = {
 
   // Privacy
   'privacy.consentTitle': 'Privacy & Permissions',
-  'privacy.consentDescription': 'To provide voice recording and synthesis services, VocalText needs to collect and process some data. Please review the following:',
+  'privacy.consentDescription': 'To provide voice recording and synthesis services, Voooice needs to collect and process some data. Please review the following:',
   'privacy.accept': 'Accept & Continue',
   'privacy.decline': 'Decline',
   'privacy.policyLink': 'Privacy Policy',
@@ -351,6 +351,26 @@ const enUS: Record<string, string> = {
   'audiobook.status.error': 'Error',
 
   // Pricing
+  // Voice Card
+  'voicecard.title': 'Voice Card',
+  'voicecard.subtitle': 'Send warm wishes in your own voice',
+  'voicecard.homeDesc': 'Voice greeting cards',
+  'voicecard.selectVoice': 'Select Voice',
+  'voicecard.messageLabel': 'Message',
+  'voicecard.messagePlaceholder': 'Write your message...',
+  'voicecard.placeholder': 'Type your message here...',
+  'voicecard.generate': 'Generate Voice Card',
+  'voicecard.generating': 'Generating...',
+  'voicecard.play': 'Play',
+  'voicecard.pause': 'Pause',
+  'voicecard.share': 'Share',
+  'voicecard.shareTitle': 'Voooice Voice Card',
+  'voicecard.shareText': 'A voice greeting from {name} — Voooice',
+  'voicecard.template.birthday': 'Birthday',
+  'voicecard.template.love': 'Love',
+  'voicecard.template.thanks': 'Thanks',
+  'voicecard.template.greeting': 'Greeting',
+
   'pricing.title': 'Pricing',
   'pricing.subtitle': 'Choose the plan that fits you',
   'pricing.monthly': 'Monthly',
@@ -454,9 +474,14 @@ const enUS: Record<string, string> = {
   'voicebank.nextPrompt': 'Next',
   'voicebank.previousPrompt': 'Previous',
   'voicebank.saveAndContinueLater': 'Save & Continue Later',
+  'voicebank.quickMode': 'Quick Mode',
+  'voicebank.fullMode': 'Full Mode',
+  'voicebank.quickModeDesc': '8 core prompts, create a voiceprint in ~3 minutes',
+  'voicebank.fullModeDesc': '50 complete prompts for the most accurate voiceprint',
+  'voicebank.upgradeToFull': 'Upgrade to Full Mode for better accuracy',
   'voicebank.saveVoicePrint': 'Save Voiceprint',
   'voicebank.recordingDuration': 'Duration: {duration}s',
-  'voicebank.allPromptsCompleted': 'All 50 prompts completed!',
+  'voicebank.allPromptsCompleted': 'All prompts completed!',
   'voicebank.savingVoicePrint': 'Saving voiceprint...',
   'voicebank.voicePrintSaved': 'Voiceprint saved!',
   'voicebank.progressSaved': 'Progress saved',

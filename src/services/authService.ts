@@ -25,9 +25,9 @@ export interface AuthProviderInterface {
 // Token storage helpers
 // ---------------------------------------------------------------------------
 
-const TOKEN_KEY = 'vocaltext_token';
-const TOKEN_EXPIRY_KEY = 'vocaltext_token_expires';
-const USER_KEY = 'vocaltext_user';
+const TOKEN_KEY = 'voooice_token';
+const TOKEN_EXPIRY_KEY = 'voooice_token_expires';
+const USER_KEY = 'voooice_user';
 
 function storeToken(token: string, expiresAt: number): void {
   try {
@@ -201,7 +201,7 @@ export class CloudAuthProvider implements AuthProviderInterface {
 // Local/guest auth provider (demo/offline mode)
 // ---------------------------------------------------------------------------
 
-const GUEST_USER_KEY = 'vocaltext_guest_user';
+const GUEST_USER_KEY = 'voooice_guest_user';
 
 export class LocalAuthProvider implements AuthProviderInterface {
   async login(_email: string, _password: string): Promise<AuthResult> {
@@ -213,7 +213,7 @@ export class LocalAuthProvider implements AuthProviderInterface {
   async signup(_email: string, _password: string, displayName: string): Promise<AuthResult> {
     const user: UserProfile = {
       id: `local-${Date.now()}`,
-      email: 'guest@vocaltext.local',
+      email: 'guest@voooice.local',
       displayName: displayName || 'Guest',
       avatarUrl: '',
       plan: 'free',
@@ -253,7 +253,7 @@ export class LocalAuthProvider implements AuthProviderInterface {
     if (stored) return JSON.parse(stored);
     const user: UserProfile = {
       id: `local-${Date.now()}`,
-      email: 'guest@vocaltext.local',
+      email: 'guest@voooice.local',
       displayName: 'Guest',
       avatarUrl: '',
       plan: 'free',

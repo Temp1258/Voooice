@@ -342,7 +342,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
           <button
             onClick={() => {
               const timestamp = new Date().toISOString().slice(0, 10);
-              downloadBlob(lastSynthesizedBlob, `VocalText_${timestamp}.wav`);
+              downloadBlob(lastSynthesizedBlob, `Voooice_${timestamp}.wav`);
             }}
             className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center space-x-1.5 active:bg-gray-200"
           >
@@ -352,7 +352,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
           <button
             onClick={() => {
               const timestamp = new Date().toISOString().slice(0, 10);
-              shareAudio(lastSynthesizedBlob, `VocalText_${timestamp}.wav`, selectedVP?.name || 'VocalText');
+              shareAudio(lastSynthesizedBlob, `Voooice_${timestamp}.wav`, selectedVP?.name || 'Voooice');
             }}
             className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center space-x-1.5 active:bg-gray-200"
           >
