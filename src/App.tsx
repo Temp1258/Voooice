@@ -23,6 +23,7 @@ const ApiDocsView = lazy(() => import('./components/ApiDocsView').then(m => ({ d
 const PricingView = lazy(() => import('./components/PricingView').then(m => ({ default: m.PricingView })));
 const VoiceBankView = lazy(() => import('./components/VoiceBankView').then(m => ({ default: m.VoiceBankView })));
 const VoiceCardView = lazy(() => import('./components/VoiceCardView').then(m => ({ default: m.VoiceCardView })));
+const TimeCapsuleView = lazy(() => import('./components/TimeCapsuleView').then(m => ({ default: m.TimeCapsuleView })));
 
 function App() {
   const { t } = useI18n();
@@ -80,6 +81,7 @@ function App() {
     pricing: t('pricing.title'),
     voicebank: t('voicebank.title'),
     voicecard: t('voicecard.title'),
+    timecapsule: t('timecapsule.title'),
   };
 
   const showBackButton = currentView !== 'home';
@@ -126,6 +128,8 @@ function App() {
         return <VoiceBankView voicePrints={voicePrints} onVoicePrintSaved={handleVoicePrintSaved} />;
       case 'voicecard':
         return <VoiceCardView voicePrints={voicePrints} />;
+      case 'timecapsule':
+        return <TimeCapsuleView voicePrints={voicePrints} />;
     }
   };
 

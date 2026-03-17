@@ -351,6 +351,41 @@ const enUS: Record<string, string> = {
   'audiobook.status.error': 'Error',
 
   // Pricing
+  // Time Capsule
+  'timecapsule.title': 'Voice Time Capsule',
+  'timecapsule.subtitle': 'Seal your voice now, listen again in the future',
+  'timecapsule.homeDesc': 'Voice time capsule',
+  'timecapsule.create': 'Create Time Capsule',
+  'timecapsule.selectVoice': 'Select Voice',
+  'timecapsule.messageLabel': 'Message',
+  'timecapsule.messagePlaceholder': 'Write a message to your future self...',
+  'timecapsule.unlockAfter': 'Unlock After',
+  'timecapsule.days': '{n}d',
+  'timecapsule.months': '{n}mo',
+  'timecapsule.year': '1yr',
+  'timecapsule.seal': 'Seal Capsule',
+  'timecapsule.creating': 'Sealing...',
+  'timecapsule.empty': 'No time capsules yet. Create one!',
+  'timecapsule.ready': 'Unlocked!',
+  'timecapsule.countdown': '{days}d {hours}h until unlock',
+  'timecapsule.countdownHours': '{hours}h until unlock',
+  'timecapsule.play': 'Play',
+  'timecapsule.pause': 'Pause',
+
+  // Voice Similarity
+  'similarity.title': 'Voice Similarity',
+  'similarity.analyzing': 'Analyzing...',
+  'similarity.description': 'Composite score based on spectrum and pitch',
+  'similarity.excellent': 'Excellent match',
+  'similarity.good': 'Good match',
+  'similarity.fair': 'Fair match',
+  'similarity.needsWork': 'Needs improvement',
+
+  // A/B Comparison
+  'speak.abCompare': 'Original vs Synthesized',
+  'speak.playOriginal': 'Play Original',
+  'speak.playSynthesized': 'Play Synthesized',
+
   // Voice Card
   'voicecard.title': 'Voice Card',
   'voicecard.subtitle': 'Send warm wishes in your own voice',
@@ -366,6 +401,11 @@ const enUS: Record<string, string> = {
   'voicecard.share': 'Share',
   'voicecard.shareTitle': 'Voooice Voice Card',
   'voicecard.shareText': 'A voice greeting from {name} — Voooice',
+  'voicecard.bgmLabel': 'Background Music',
+  'voicecard.bgm.none': 'None',
+  'voicecard.bgm.warm': 'Warm',
+  'voicecard.bgm.festive': 'Festive',
+  'voicecard.bgm.calm': 'Calm',
   'voicecard.template.birthday': 'Birthday',
   'voicecard.template.love': 'Love',
   'voicecard.template.thanks': 'Thanks',

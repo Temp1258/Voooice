@@ -351,6 +351,41 @@ const zhCN: Record<string, string> = {
   'audiobook.status.error': '错误',
 
   // Pricing
+  // Time Capsule
+  'timecapsule.title': '声音时光胶囊',
+  'timecapsule.subtitle': '封存此刻的声音，在未来某天重新聆听',
+  'timecapsule.homeDesc': '声音时光胶囊',
+  'timecapsule.create': '创建时光胶囊',
+  'timecapsule.selectVoice': '选择声音',
+  'timecapsule.messageLabel': '留言内容',
+  'timecapsule.messagePlaceholder': '写下你想对未来说的话...',
+  'timecapsule.unlockAfter': '解锁时间',
+  'timecapsule.days': '{n}天',
+  'timecapsule.months': '{n}月',
+  'timecapsule.year': '1年',
+  'timecapsule.seal': '封存胶囊',
+  'timecapsule.creating': '封存中...',
+  'timecapsule.empty': '还没有时光胶囊，创建一个吧',
+  'timecapsule.ready': '已解锁！',
+  'timecapsule.countdown': '还有 {days}天{hours}小时 解锁',
+  'timecapsule.countdownHours': '还有 {hours}小时 解锁',
+  'timecapsule.play': '播放',
+  'timecapsule.pause': '暂停',
+
+  // Voice Similarity
+  'similarity.title': '声纹相似度',
+  'similarity.analyzing': '分析中...',
+  'similarity.description': '基于频谱和音高特征的综合评分',
+  'similarity.excellent': '极高相似度',
+  'similarity.good': '良好相似度',
+  'similarity.fair': '中等相似度',
+  'similarity.needsWork': '待提升',
+
+  // A/B Comparison
+  'speak.abCompare': '原声 vs 合成 对比',
+  'speak.playOriginal': '播放原声',
+  'speak.playSynthesized': '播放合成',
+
   // Voice Card
   'voicecard.title': '声音明信片',
   'voicecard.subtitle': '用你的声音，传递温暖的心意',
@@ -366,6 +401,11 @@ const zhCN: Record<string, string> = {
   'voicecard.share': '分享',
   'voicecard.shareTitle': 'Voooice 声音明信片',
   'voicecard.shareText': '来自{name}的声音祝福 — Voooice',
+  'voicecard.bgmLabel': '背景音乐',
+  'voicecard.bgm.none': '无',
+  'voicecard.bgm.warm': '温暖',
+  'voicecard.bgm.festive': '欢快',
+  'voicecard.bgm.calm': '宁静',
   'voicecard.template.birthday': '生日',
   'voicecard.template.love': '表白',
   'voicecard.template.thanks': '感谢',

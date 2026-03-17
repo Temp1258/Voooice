@@ -65,3 +65,12 @@ class HealthResponse(BaseModel):
     status: str
     models: list[str]
     gpu: bool
+
+
+class EdgeVoiceInfo(BaseModel):
+    """An available Edge-TTS neural voice."""
+
+    short_name: str
+    friendly_name: str
+    locale: str
+    gender: str

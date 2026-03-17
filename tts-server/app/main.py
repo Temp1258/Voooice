@@ -14,7 +14,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.models.schemas import HealthResponse
+from app.models.schemas import EdgeVoiceInfo, HealthResponse
 from app.routes import synthesis, voices
 
 # ---------------------------------------------------------------------------
@@ -71,3 +71,22 @@ async def health() -> HealthResponse:
         models=synthesis.AVAILABLE_MODELS,
         gpu=_gpu_available(),
     )
+
+
+@app.get("/v1/edge-voices", response_model=list[EdgeVoiceInfo])
+async def list_edge_voices() -> list[EdgeVoiceInfo]:
+    """List all available Edge-TTS neural voices."""
+    try:
+        import edge_tts
+        voice_list = await edge_tts.list_voices()
+        return [
+            EdgeVoiceInfo(
+                short_name=v["ShortName"],
+                friendly_name=v["FriendlyName"],
+                locale=v["Locale"],
+                gender=v["Gender"],
+            )
+            for v in voice_list
+        ]
+    except Exception:
+        return []

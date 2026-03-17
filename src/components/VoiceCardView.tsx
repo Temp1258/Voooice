@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Send, Play, Pause, Sparkles, Gift, Heart, Star, Sun } from 'lucide-react';
+import { Send, Play, Pause, Sparkles, Gift, Heart, Star, Sun, Music } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { voiceCloneService } from '../services/voiceCloneService';
 import { shareAudio, downloadBlob } from '../utils/audioExport';
@@ -18,12 +18,60 @@ const CARD_TEMPLATES = [
 
 type TemplateId = typeof CARD_TEMPLATES[number]['id'];
 
+const BGM_STYLES = [
+  { id: 'none', labelKey: 'voicecard.bgm.none' },
+  { id: 'warm', labelKey: 'voicecard.bgm.warm' },
+  { id: 'festive', labelKey: 'voicecard.bgm.festive' },
+  { id: 'calm', labelKey: 'voicecard.bgm.calm' },
+] as const;
+
+type BgmStyle = typeof BGM_STYLES[number]['id'];
+
+/**
+ * Generate a simple ambient background tone using Web Audio API.
+ * Returns an AudioBuffer with soft pad-like tones.
+ */
+function generateBgmBuffer(
+  style: BgmStyle,
+  duration: number,
+  sampleRate = 44100,
+): AudioBuffer {
+  const ctx = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
+  const buffer = ctx.createBuffer(1, sampleRate * duration, sampleRate);
+  const data = buffer.getChannelData(0);
+
+  const chords: Record<string, number[]> = {
+    warm: [261.6, 329.6, 392.0],     // C major
+    festive: [293.7, 370.0, 440.0],  // D major
+    calm: [220.0, 277.2, 330.0],     // A minor
+  };
+
+  const freqs = chords[style] || chords.warm;
+  const amplitude = 0.04; // Very quiet background
+
+  for (let i = 0; i < data.length; i++) {
+    const t = i / sampleRate;
+    let sample = 0;
+    for (const freq of freqs) {
+      // Soft sine pad with slow amplitude modulation
+      sample += Math.sin(2 * Math.PI * freq * t) * (0.5 + 0.5 * Math.sin(0.3 * t));
+    }
+    // Fade in/out
+    const fadeIn = Math.min(1, t / 0.5);
+    const fadeOut = Math.min(1, (duration - t) / 0.5);
+    data[i] = sample * amplitude * fadeIn * fadeOut / freqs.length;
+  }
+
+  return buffer;
+}
+
 export function VoiceCardView({ voicePrints }: VoiceCardViewProps) {
   const { t } = useI18n();
 
   const [selectedVP, setSelectedVP] = useState<string>(voicePrints[0]?.id || '');
   const [template, setTemplate] = useState<TemplateId>('birthday');
   const [message, setMessage] = useState('');
+  const [bgm, setBgm] = useState<BgmStyle>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -37,13 +85,44 @@ export function VoiceCardView({ voicePrints }: VoiceCardViewProps) {
     setAudioBlob(null);
     try {
       const vp = voicePrints.find(v => v.id === selectedVP);
-      const blob = await voiceCloneService.synthesize(message.trim(), {
-        voiceId: vp?.cloudVoiceId,
+      const voiceId = vp?.cloudVoiceId || selectedVP;
+      const blob = await voiceCloneService.synthesize(message.trim(), voiceId, {
         language: vp?.language || 'zh-CN',
         emotion: 'happy',
         speed: 0.95,
+        stability: 0.5,
+        similarity: 0.75,
       });
-      if (blob) {
+      if (blob && blob.size > 0 && bgm !== 'none') {
+        // Mix voice with background music
+        try {
+          const audioContext = new AudioContext();
+          const voiceBuffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
+          const bgmBuffer = generateBgmBuffer(bgm, voiceBuffer.duration + 1, voiceBuffer.sampleRate);
+
+          // Create mixed output
+          const mixLength = Math.max(voiceBuffer.length, bgmBuffer.length);
+          const mixBuffer = audioContext.createBuffer(1, mixLength, voiceBuffer.sampleRate);
+          const mixData = mixBuffer.getChannelData(0);
+          const voiceData = voiceBuffer.getChannelData(0);
+          const bgmData = bgmBuffer.getChannelData(0);
+
+          for (let i = 0; i < mixLength; i++) {
+            const v = i < voiceData.length ? voiceData[i] : 0;
+            const b = i < bgmData.length ? bgmData[i] : 0;
+            mixData[i] = Math.max(-1, Math.min(1, v + b));
+          }
+
+          // Encode to WAV blob
+          const { audioBufferToWav } = await import('../utils/audioExport');
+          const mixedBlob = audioBufferToWav(mixBuffer);
+          await audioContext.close();
+          setAudioBlob(mixedBlob);
+        } catch {
+          // Fallback to voice only
+          setAudioBlob(blob);
+        }
+      } else if (blob) {
         setAudioBlob(blob);
       }
     } catch (err) {
@@ -51,7 +130,7 @@ export function VoiceCardView({ voicePrints }: VoiceCardViewProps) {
     } finally {
       setIsGenerating(false);
     }
-  }, [message, selectedVP, voicePrints]);
+  }, [message, selectedVP, voicePrints, bgm]);
 
   const handlePlay = useCallback(() => {
     if (!audioBlob) return;
@@ -153,6 +232,29 @@ export function VoiceCardView({ voicePrints }: VoiceCardViewProps) {
           className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         />
         <p className="text-xs text-gray-400 text-right mt-1">{message.length}/200</p>
+      </div>
+
+      {/* Background music */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <Music className="h-4 w-4 inline mr-1" />
+          {t('voicecard.bgmLabel')}
+        </label>
+        <div className="flex gap-2">
+          {BGM_STYLES.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setBgm(s.id)}
+              className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
+                bgm === s.id
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-50 text-gray-600 active:bg-gray-100'
+              }`}
+            >
+              {t(s.labelKey)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Generate button */}

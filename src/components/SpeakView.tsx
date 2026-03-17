@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Volume2, AlertCircle, ChevronDown, Activity, Smile, Frown, Zap, Heart, Wind, Minus, Download, Share2 } from 'lucide-react';
+import { Volume2, AlertCircle, ChevronDown, Activity, Smile, Frown, Zap, Heart, Wind, Minus, Download, Share2, GitCompareArrows } from 'lucide-react';
 import { getAudioBlob } from '../utils/storage';
 import { blobToAudioBuffer } from '../utils/audioAnalyzer';
 import { voiceCloneService } from '../services/voiceCloneService';
 import { downloadBlob, shareAudio } from '../utils/audioExport';
 import { useI18n } from '../i18n';
+import { VoiceSimilarityScore } from './VoiceSimilarityScore';
 import type { VoicePrint, SpeakingState, EmotionType } from '../types';
 
 interface SpeakViewProps {
@@ -336,29 +337,71 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
         </button>
       )}
 
-      {/* Export / Share buttons */}
+      {/* Export / Share / Compare buttons */}
       {lastSynthesizedBlob && lastSynthesizedBlob.size > 0 && speakingState === 'idle' && (
-        <div className="flex space-x-3">
-          <button
-            onClick={() => {
-              const timestamp = new Date().toISOString().slice(0, 10);
-              downloadBlob(lastSynthesizedBlob, `Voooice_${timestamp}.wav`);
-            }}
-            className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center space-x-1.5 active:bg-gray-200"
-          >
-            <Download className="h-4 w-4" />
-            <span>{t('common.export')}</span>
-          </button>
-          <button
-            onClick={() => {
-              const timestamp = new Date().toISOString().slice(0, 10);
-              shareAudio(lastSynthesizedBlob, `Voooice_${timestamp}.wav`, selectedVP?.name || 'Voooice');
-            }}
-            className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center space-x-1.5 active:bg-gray-200"
-          >
-            <Share2 className="h-4 w-4" />
-            <span>{t('common.share')}</span>
-          </button>
+        <div className="space-y-3">
+          <div className="flex space-x-3">
+            <button
+              onClick={() => {
+                const timestamp = new Date().toISOString().slice(0, 10);
+                downloadBlob(lastSynthesizedBlob, `Voooice_${timestamp}.wav`);
+              }}
+              className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center space-x-1.5 active:bg-gray-200"
+            >
+              <Download className="h-4 w-4" />
+              <span>{t('common.export')}</span>
+            </button>
+            <button
+              onClick={() => {
+                const timestamp = new Date().toISOString().slice(0, 10);
+                shareAudio(lastSynthesizedBlob, `Voooice_${timestamp}.wav`, selectedVP?.name || 'Voooice');
+              }}
+              className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center space-x-1.5 active:bg-gray-200"
+            >
+              <Share2 className="h-4 w-4" />
+              <span>{t('common.share')}</span>
+            </button>
+          </div>
+
+          {/* A/B Comparison */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <GitCompareArrows className="h-4 w-4 text-indigo-500" />
+              {t('speak.abCompare')}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handlePlayOriginal}
+                className="flex-1 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 active:bg-blue-100"
+              >
+                <Volume2 className="h-4 w-4" />
+                {t('speak.playOriginal')}
+              </button>
+              <button
+                onClick={async () => {
+                  if (!lastSynthesizedBlob) return;
+                  const audioContext = new AudioContext();
+                  audioContextRef.current = audioContext;
+                  const buffer = await audioContext.decodeAudioData(await lastSynthesizedBlob.arrayBuffer());
+                  const source = audioContext.createBufferSource();
+                  source.buffer = buffer;
+                  source.connect(audioContext.destination);
+                  sourceRef.current = source;
+                  source.onended = () => audioContext.close();
+                  source.start();
+                }}
+                className="flex-1 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 active:bg-indigo-100"
+              >
+                <Volume2 className="h-4 w-4" />
+                {t('speak.playSynthesized')}
+              </button>
+            </div>
+          </div>
+
+          {/* Similarity Score */}
+          {selectedVP && (
+            <VoiceSimilarityScore voicePrint={selectedVP} synthesizedBlob={lastSynthesizedBlob} />
+          )}
         </div>
       )}
 

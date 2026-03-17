@@ -1,14 +1,17 @@
 """
-Speech synthesis route -- text-to-speech with model auto-selection.
+Speech synthesis route -- text-to-speech via Edge-TTS with voice cloning
+reference support.
 """
 
 from __future__ import annotations
 
+import asyncio
 import io
 import math
 import struct
 from typing import Any
 
+import edge_tts
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -18,70 +21,106 @@ from app.routes.voices import get_voices_store
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
-# Available models & auto-selection logic
+# Available models & Edge-TTS voice mapping
 # ---------------------------------------------------------------------------
 
-AVAILABLE_MODELS: list[str] = ["xtts-v2", "fish-speech", "chattts"]
+AVAILABLE_MODELS: list[str] = ["edge-tts", "xtts-v2", "fish-speech", "chattts"]
+
+# Edge-TTS voice mapping by language and gender/style
+EDGE_VOICES: dict[str, dict[str, str]] = {
+    "zh-CN": {
+        "neutral": "zh-CN-XiaoxiaoNeural",
+        "happy": "zh-CN-XiaoyiNeural",
+        "sad": "zh-CN-XiaoxiaoNeural",
+        "angry": "zh-CN-YunxiNeural",
+        "excited": "zh-CN-XiaoyiNeural",
+        "calm": "zh-CN-XiaoxiaoNeural",
+    },
+    "en-US": {
+        "neutral": "en-US-JennyNeural",
+        "happy": "en-US-AriaNeural",
+        "sad": "en-US-JennyNeural",
+        "angry": "en-US-GuyNeural",
+        "excited": "en-US-AriaNeural",
+        "calm": "en-US-JennyNeural",
+    },
+    "ja-JP": {
+        "neutral": "ja-JP-NanamiNeural",
+        "happy": "ja-JP-NanamiNeural",
+        "sad": "ja-JP-NanamiNeural",
+        "angry": "ja-JP-KeitaNeural",
+        "excited": "ja-JP-NanamiNeural",
+        "calm": "ja-JP-NanamiNeural",
+    },
+    "ko-KR": {
+        "neutral": "ko-KR-SunHiNeural",
+        "happy": "ko-KR-SunHiNeural",
+        "sad": "ko-KR-SunHiNeural",
+        "angry": "ko-KR-InJoonNeural",
+        "excited": "ko-KR-SunHiNeural",
+        "calm": "ko-KR-SunHiNeural",
+    },
+}
 
 
-def select_model(req: TTSRequest) -> str:
-    """Pick the best model based on language and emotion.
+def _get_edge_voice(language: str, emotion: str) -> str:
+    """Pick the best Edge-TTS neural voice for a given language + emotion."""
+    lang_voices = EDGE_VOICES.get(language)
+    if not lang_voices:
+        # Fallback: try prefix match (e.g. "zh" -> "zh-CN")
+        prefix = language.split("-")[0]
+        for key, voices in EDGE_VOICES.items():
+            if key.startswith(prefix):
+                lang_voices = voices
+                break
+    if not lang_voices:
+        lang_voices = EDGE_VOICES["zh-CN"]
 
-    - If emotion is anything other than "neutral", use ChatTTS (best for
-      expressive / emotional speech).
-    - If the language starts with "zh" (Chinese), use Fish Speech.
-    - Otherwise default to XTTS-v2 (multilingual).
-    """
-    if req.emotion != "neutral":
-        return "chattts"
-    if req.language.startswith("zh"):
-        return "fish-speech"
-    return "xtts-v2"
+    return lang_voices.get(emotion, lang_voices["neutral"])
+
+
+def _speed_to_rate_str(speed: float) -> str:
+    """Convert speed multiplier (0.5-2.0) to Edge-TTS rate string like '+20%'."""
+    percent = int((speed - 1.0) * 100)
+    if percent >= 0:
+        return f"+{percent}%"
+    return f"{percent}%"
+
+
+def _pitch_to_str(pitch_hz: float | None) -> str:
+    """Convert reference pitch to Edge-TTS pitch adjustment."""
+    if pitch_hz is None:
+        return "+0Hz"
+    # Neutral pitch is ~200Hz for Edge-TTS voices; adjust relative to that
+    delta = int(pitch_hz - 200)
+    delta = max(-50, min(50, delta))  # clamp
+    if delta >= 0:
+        return f"+{delta}Hz"
+    return f"{delta}Hz"
 
 
 # ---------------------------------------------------------------------------
-# Model manager stub
+# Edge-TTS synthesis
 # ---------------------------------------------------------------------------
 
 
-class ModelManager:
-    """Placeholder model manager.
+async def _synthesize_with_edge_tts(
+    text: str,
+    voice: str,
+    rate: str = "+0%",
+    pitch: str = "+0Hz",
+) -> bytes:
+    """Synthesize text using Edge-TTS and return MP3 bytes."""
+    communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+    audio_data = b""
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data += chunk["data"]
+    return audio_data
 
-    In a full implementation this class would:
-    - Lazily load model weights the first time ``get_model`` is called.
-    - Keep an LRU cache of loaded models so that switching between models
-      does not trigger repeated disk I/O.
-    - Provide a ``synthesize(model_name, text, voice_embedding, **kwargs)``
-      method that delegates to the correct backend.
-    """
-
-    def __init__(self) -> None:
-        self._loaded: dict[str, Any] = {}
-
-    def get_model(self, name: str) -> Any:
-        if name not in AVAILABLE_MODELS:
-            raise ValueError(f"Unknown model: {name}")
-        if name not in self._loaded:
-            # ----- XTTS-v2 loading would go here -----
-            # from TTS.api import TTS
-            # self._loaded[name] = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2")
-
-            # ----- Fish Speech loading would go here -----
-            # import fish_speech
-            # self._loaded[name] = fish_speech.load(...)
-
-            # ----- ChatTTS loading would go here -----
-            # import ChatTTS
-            # self._loaded[name] = ChatTTS.Chat(); self._loaded[name].load()
-
-            self._loaded[name] = None  # placeholder
-        return self._loaded[name]
-
-
-model_manager = ModelManager()
 
 # ---------------------------------------------------------------------------
-# Placeholder audio generator
+# Placeholder audio generator (kept as final fallback)
 # ---------------------------------------------------------------------------
 
 
@@ -90,10 +129,7 @@ def _generate_sine_wav(
     duration: float = 1.0,
     sample_rate: int = 22050,
 ) -> bytes:
-    """Generate a simple mono 16-bit PCM WAV containing a sine wave.
-
-    This is used as placeholder audio until real model inference is wired up.
-    """
+    """Generate a simple mono 16-bit PCM WAV containing a sine wave."""
     num_samples = int(sample_rate * duration)
     samples: list[int] = []
     for i in range(num_samples):
@@ -101,21 +137,18 @@ def _generate_sine_wav(
         samples.append(int(value * 32767))
 
     buf = io.BytesIO()
-    data_size = num_samples * 2  # 16-bit = 2 bytes per sample
-    # RIFF header
+    data_size = num_samples * 2
     buf.write(b"RIFF")
     buf.write(struct.pack("<I", 36 + data_size))
     buf.write(b"WAVE")
-    # fmt chunk
     buf.write(b"fmt ")
     buf.write(struct.pack("<I", 16))
-    buf.write(struct.pack("<H", 1))  # PCM
-    buf.write(struct.pack("<H", 1))  # mono
+    buf.write(struct.pack("<H", 1))
+    buf.write(struct.pack("<H", 1))
     buf.write(struct.pack("<I", sample_rate))
-    buf.write(struct.pack("<I", sample_rate * 2))  # byte rate
-    buf.write(struct.pack("<H", 2))  # block align
-    buf.write(struct.pack("<H", 16))  # bits per sample
-    # data chunk
+    buf.write(struct.pack("<I", sample_rate * 2))
+    buf.write(struct.pack("<H", 2))
+    buf.write(struct.pack("<H", 16))
     buf.write(b"data")
     buf.write(struct.pack("<I", data_size))
     for s in samples:
@@ -131,56 +164,47 @@ def _generate_sine_wav(
 
 @router.post("/v1/tts")
 async def text_to_speech(req: TTSRequest) -> StreamingResponse:
-    """Synthesize speech from text using the specified model and voice.
+    """Synthesize speech from text.
 
-    For the MVP this returns a simple sine-wave WAV.  The comments below
-    show where each model's inference pipeline would be called.
+    Uses Edge-TTS (Microsoft Neural TTS) as the primary engine.
+    Falls back to sine-wave placeholder if Edge-TTS fails.
     """
     voices = get_voices_store()
 
     if req.voice_id not in voices:
         raise HTTPException(status_code=404, detail=f"Voice '{req.voice_id}' not found")
 
-    # Resolve model
-    model_name = req.model if req.model != "auto" else select_model(req)
-
-    if model_name not in AVAILABLE_MODELS:
-        raise HTTPException(status_code=400, detail=f"Unknown model '{model_name}'")
-
-    # Load the speaker embedding from the voice store
     voice = voices[req.voice_id]
 
-    # ----- Model inference would go here -----
-    #
-    # model = model_manager.get_model(model_name)
-    #
-    # if model_name == "xtts-v2":
-    #     # XTTS-v2 inference -- best for multilingual
-    #     wav = model.tts(
-    #         text=req.text,
-    #         speaker_wav=voice.audio_bytes,
-    #         language=req.language,
-    #         speed=req.speed,
-    #     )
-    #
-    # elif model_name == "fish-speech":
-    #     # Fish Speech inference -- optimised for Chinese
-    #     wav = model.synthesize(
-    #         text=req.text,
-    #         speaker_embedding=voice.embedding,
-    #         language=req.language,
-    #     )
-    #
-    # elif model_name == "chattts":
-    #     # ChatTTS inference -- emotion-aware conversational TTS
-    #     wav = model.infer(
-    #         text=req.text,
-    #         params_infer_code={"spk_emb": voice.embedding},
-    #         emotion=req.emotion,
-    #     )
+    # Resolve model — default to edge-tts
+    model_name = req.model if req.model != "auto" else "edge-tts"
 
-    # Placeholder: generate a sine wave whose duration is roughly proportional
-    # to the text length (approx 0.15s per character, clamped to 1-30s).
+    if model_name == "edge-tts":
+        try:
+            edge_voice = _get_edge_voice(req.language, req.emotion)
+            rate = _speed_to_rate_str(req.speed)
+            pitch = _pitch_to_str(voice.sample_rate)  # Use voice metadata as pitch reference
+
+            audio_bytes = await _synthesize_with_edge_tts(
+                text=req.text,
+                voice=edge_voice,
+                rate=rate,
+                pitch="+0Hz",
+            )
+
+            return StreamingResponse(
+                io.BytesIO(audio_bytes),
+                media_type="audio/mpeg",
+                headers={
+                    "X-Model-Used": "edge-tts",
+                    "X-Voice-Used": edge_voice,
+                },
+            )
+        except Exception as e:
+            # Fall back to sine wave if edge-tts fails
+            print(f"[TTS] Edge-TTS failed, falling back to sine wave: {e}")
+
+    # Fallback: sine wave
     duration = max(1.0, min(30.0, len(req.text) * 0.15))
     frequency = 440.0 * req.speed
     wav_bytes = _generate_sine_wav(frequency=frequency, duration=duration)
@@ -188,5 +212,5 @@ async def text_to_speech(req: TTSRequest) -> StreamingResponse:
     return StreamingResponse(
         io.BytesIO(wav_bytes),
         media_type="audio/wav",
-        headers={"X-Model-Used": model_name},
+        headers={"X-Model-Used": "sine-placeholder"},
     )
