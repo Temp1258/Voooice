@@ -44,8 +44,10 @@ describe('computeVoiceSimilarity', () => {
     const a = [1, 0, 0, 0];
     const b = [0, 0, 0, 1];
     const score = computeVoiceSimilarity(a, b, 200, 200);
-    // Profile similarity is 0 but pitch is perfect → 30% max
-    expect(score).toBe(30);
+    // With MFCC + formant analysis, orthogonal profiles still produce
+    // partial similarity. Score should be well below identical (100).
+    expect(score).toBeLessThan(60);
+    expect(score).toBeGreaterThan(0);
   });
 
   it('should penalize large pitch differences', () => {

@@ -64,31 +64,55 @@ function writeString(view: DataView, offset: number, str: string) {
 }
 
 /**
- * Encode an AudioBuffer to an MP3 Blob using the MediaRecorder API
- * with an offline AudioContext. Falls back to WAV if MP3 encoding
- * isn't supported.
+ * Convert Float32Array to Int16Array for MP3 encoding.
+ */
+function floatTo16BitPCM(float32: Float32Array): Int16Array {
+  const int16 = new Int16Array(float32.length);
+  for (let i = 0; i < float32.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32[i]));
+    int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  return int16;
+}
+
+/**
+ * Encode an AudioBuffer to a real MP3 Blob using lamejs.
+ * Falls back to WAV if lamejs is not available.
  */
 export async function audioBufferToMp3(buffer: AudioBuffer): Promise<Blob> {
-  // Try using MediaRecorder with an OfflineAudioContext destination
-  // This approach works in modern browsers that support audio/mp4 or audio/webm
   try {
-    const offlineCtx = new OfflineAudioContext(
-      buffer.numberOfChannels,
-      buffer.length,
-      buffer.sampleRate
-    );
-    const source = offlineCtx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(offlineCtx.destination);
-    source.start();
+    const { Mp3Encoder } = await import('lamejs');
+    const sampleRate = buffer.sampleRate;
+    const numChannels = Math.min(2, buffer.numberOfChannels);
+    const kbps = 128;
+    const encoder = new Mp3Encoder(numChannels, sampleRate, kbps);
 
-    const renderedBuffer = await offlineCtx.startRendering();
+    const left = floatTo16BitPCM(buffer.getChannelData(0));
+    const right = numChannels === 2
+      ? floatTo16BitPCM(buffer.getChannelData(1))
+      : left;
 
-    // Try to create a MediaRecorder-friendly version
-    // For actual MP3, we'd need a WASM encoder like lamejs
-    // For now, return as WAV with .mp3 extension hint (most platforms accept it)
-    return audioBufferToWav(renderedBuffer);
+    const mp3Parts: Int8Array[] = [];
+    const blockSize = 1152;
+
+    for (let i = 0; i < left.length; i += blockSize) {
+      const leftChunk = left.subarray(i, i + blockSize);
+      const rightChunk = right.subarray(i, i + blockSize);
+      const mp3buf = encoder.encodeBuffer(leftChunk, rightChunk);
+      if (mp3buf.length > 0) {
+        mp3Parts.push(mp3buf);
+      }
+    }
+
+    const lastBuf = encoder.flush();
+    if (lastBuf.length > 0) {
+      mp3Parts.push(lastBuf);
+    }
+
+    return new Blob(mp3Parts, { type: 'audio/mp3' });
   } catch {
+    // Fall back to WAV if lamejs fails to load
+    console.warn('MP3 encoding unavailable, falling back to WAV');
     return audioBufferToWav(buffer);
   }
 }
@@ -117,12 +141,11 @@ export async function shareAudio(
   title: string,
   text?: string
 ): Promise<boolean> {
-  // Check if Web Share API level 2 (with files) is supported
   if (navigator.canShare) {
     const file = new File([blob], filename, { type: blob.type || 'audio/wav' });
     const shareData: ShareData = {
       title,
-      text: text || `由 Voooice 生成的语音 - ${title}`,
+      text: text || title,
       files: [file],
     };
 
@@ -130,16 +153,14 @@ export async function shareAudio(
       try {
         await navigator.share(shareData);
         return true;
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
-          return false; // User cancelled
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return false;
         }
-        // Fall through to download
       }
     }
   }
 
-  // Fallback: download
   downloadBlob(blob, filename);
   return true;
 }
@@ -157,6 +178,5 @@ export async function exportSynthesizedAudio(
   const safeName = voiceName.replace(/[^\w\u4e00-\u9fff]/g, '_').slice(0, 20);
   const filename = `Voooice_${safeName}_${timestamp}.${format}`;
 
-  // If the blob is already in the right format, use it directly
   downloadBlob(audioBlob, filename);
 }

@@ -2,13 +2,13 @@
 Voooice Local TTS Server
 ===========================
 FastAPI application that exposes voice cloning and text-to-speech synthesis
-via a simple REST API.  For the MVP the TTS endpoint returns a placeholder
-sine-wave WAV; comments throughout indicate where real model inference would
-be wired in.
+via a simple REST API.  Uses Edge-TTS (Microsoft Neural TTS) as the primary
+engine.
 """
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from collections import defaultdict
@@ -21,10 +21,20 @@ from app.models.schemas import EdgeVoiceInfo, HealthResponse
 from app.routes import synthesis, voices
 
 # ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+)
+logger = logging.getLogger("voooice")
+
+# ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Voooice Local TTS Server", version="0.1.0")
+app = FastAPI(title="Voooice Local TTS Server", version="0.2.0")
 
 _default_origins = [
     "http://localhost:3000",
@@ -33,8 +43,6 @@ _default_origins = [
     "http://127.0.0.1:5173",
 ]
 
-# CORS_ORIGINS env var: comma-separated list of allowed origins.
-# Set to "*" to allow all origins (not recommended for production).
 _env_origins = os.environ.get("CORS_ORIGINS")
 if _env_origins:
     _allowed_origins = [o.strip() for o in _env_origins.split(",") if o.strip()]
@@ -50,12 +58,13 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Simple in-memory rate limiter middleware
+# Rate limiter middleware with bounded store
 # ---------------------------------------------------------------------------
 
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
-_RATE_LIMIT_MAX = 20  # requests per window
-_RATE_LIMIT_WINDOW = 60.0  # seconds
+_RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "20"))
+_RATE_LIMIT_WINDOW = float(os.environ.get("RATE_LIMIT_WINDOW", "60.0"))
+_MAX_TRACKED_IPS = 10000
 
 
 @app.middleware("http")
@@ -63,7 +72,7 @@ async def rate_limit_middleware(request: Request, call_next):
     client_ip = request.client.host if request.client else "unknown"
     now = time.time()
 
-    # Clean old entries
+    # Clean old entries for this IP
     _rate_limit_store[client_ip] = [
         t for t in _rate_limit_store[client_ip] if now - t < _RATE_LIMIT_WINDOW
     ]
@@ -76,6 +85,13 @@ async def rate_limit_middleware(request: Request, call_next):
         )
 
     _rate_limit_store[client_ip].append(now)
+
+    # Bound the store size to prevent memory exhaustion
+    if len(_rate_limit_store) > _MAX_TRACKED_IPS:
+        oldest_ips = sorted(_rate_limit_store.keys(), key=lambda ip: min(_rate_limit_store[ip]) if _rate_limit_store[ip] else 0)
+        for ip in oldest_ips[:1000]:
+            del _rate_limit_store[ip]
+
     response = await call_next(request)
     response.headers["X-RateLimit-Limit"] = str(_RATE_LIMIT_MAX)
     response.headers["X-RateLimit-Remaining"] = str(
@@ -90,7 +106,7 @@ app.include_router(voices.router)
 
 
 # ---------------------------------------------------------------------------
-# Health endpoint (kept at app level)
+# Health endpoint
 # ---------------------------------------------------------------------------
 
 def _gpu_available() -> bool:
@@ -126,5 +142,6 @@ async def list_edge_voices() -> list[EdgeVoiceInfo]:
             )
             for v in voice_list
         ]
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to list Edge-TTS voices: %s", e)
         return []

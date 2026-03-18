@@ -1,7 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'voooice.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'voooice.db');
 
 const db = new Database(DB_PATH);
 
@@ -13,12 +13,12 @@ db.pragma('foreign_keys = ON');
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL COLLATE NOCASE,
     password_hash TEXT NOT NULL,
     display_name TEXT,
     plan TEXT DEFAULT 'free',
     voice_quota INTEGER DEFAULT 5,
-    used_quota INTEGER DEFAULT 0,
+    used_quota INTEGER DEFAULT 0 CHECK(used_quota >= 0),
     created_at INTEGER NOT NULL
   );
 
@@ -62,6 +62,13 @@ db.exec(`
     expires_at INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  -- Performance indexes
+  CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+  CREATE INDEX IF NOT EXISTS idx_voiceprints_user_id ON voiceprints(user_id);
+  CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+  CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_expires ON subscriptions(expires_at);
 `);
 
 // Export both direct db and getDb() for compatibility

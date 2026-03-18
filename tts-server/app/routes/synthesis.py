@@ -7,28 +7,32 @@ from __future__ import annotations
 
 import asyncio
 import io
-import math
-import struct
+import logging
+import os
 from typing import Any
 
 import edge_tts
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
+from app.models import engine_manager
 from app.models.schemas import TTSRequest
 from app.routes.voices import get_voices_store
 
 router = APIRouter()
+logger = logging.getLogger("voooice.synthesis")
 
-# Concurrency limiter: max 5 simultaneous Edge-TTS requests
-# Prevents flooding Microsoft's service and getting rate-limited
-_tts_semaphore = asyncio.Semaphore(5)
+# Concurrency limiter: configurable max simultaneous Edge-TTS requests
+_max_concurrent = int(os.environ.get("TTS_MAX_CONCURRENT", "5"))
+_tts_semaphore = asyncio.Semaphore(_max_concurrent)
 
 # ---------------------------------------------------------------------------
 # Available models & Edge-TTS voice mapping
 # ---------------------------------------------------------------------------
 
-AVAILABLE_MODELS: list[str] = ["edge-tts", "xtts-v2", "fish-speech", "chattts"]
+# Dynamically populated from engine_manager at import time and refreshed
+# on every /v1/tts call so newly-installed models are picked up.
+AVAILABLE_MODELS: list[str] = engine_manager.get_available_models()
 
 # Edge-TTS voice mapping by language and gender/style
 EDGE_VOICES: dict[str, dict[str, str]] = {
@@ -84,7 +88,10 @@ def _get_edge_voice(language: str, emotion: str) -> str:
 
 
 def _speed_to_rate_str(speed: float) -> str:
-    """Convert speed multiplier (0.5-2.0) to Edge-TTS rate string like '+20%'."""
+    """Convert speed multiplier (0.25-4.0) to Edge-TTS rate string like '+20%'.
+
+    Speed is already validated by Pydantic to be between 0.25 and 4.0.
+    """
     percent = int((speed - 1.0) * 100)
     if percent >= 0:
         return f"+{percent}%"
@@ -115,44 +122,6 @@ async def _synthesize_with_edge_tts(
 
 
 # ---------------------------------------------------------------------------
-# Placeholder audio generator (kept as final fallback)
-# ---------------------------------------------------------------------------
-
-
-def _generate_sine_wav(
-    frequency: float = 440.0,
-    duration: float = 1.0,
-    sample_rate: int = 22050,
-) -> bytes:
-    """Generate a simple mono 16-bit PCM WAV containing a sine wave."""
-    num_samples = int(sample_rate * duration)
-    samples: list[int] = []
-    for i in range(num_samples):
-        value = math.sin(2.0 * math.pi * frequency * i / sample_rate)
-        samples.append(int(value * 32767))
-
-    buf = io.BytesIO()
-    data_size = num_samples * 2
-    buf.write(b"RIFF")
-    buf.write(struct.pack("<I", 36 + data_size))
-    buf.write(b"WAVE")
-    buf.write(b"fmt ")
-    buf.write(struct.pack("<I", 16))
-    buf.write(struct.pack("<H", 1))
-    buf.write(struct.pack("<H", 1))
-    buf.write(struct.pack("<I", sample_rate))
-    buf.write(struct.pack("<I", sample_rate * 2))
-    buf.write(struct.pack("<H", 2))
-    buf.write(struct.pack("<H", 16))
-    buf.write(b"data")
-    buf.write(struct.pack("<I", data_size))
-    for s in samples:
-        buf.write(struct.pack("<h", s))
-
-    return buf.getvalue()
-
-
-# ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
 
@@ -161,8 +130,9 @@ def _generate_sine_wav(
 async def text_to_speech(req: TTSRequest) -> StreamingResponse:
     """Synthesize speech from text.
 
-    Uses Edge-TTS (Microsoft Neural TTS) as the primary engine.
-    Falls back to sine-wave placeholder if Edge-TTS fails.
+    Supports multiple TTS backends via *engine_manager*.  When the
+    requested model is ``"auto"`` or unavailable the server falls back to
+    ``edge-tts``.
     """
     voices = get_voices_store()
 
@@ -171,39 +141,107 @@ async def text_to_speech(req: TTSRequest) -> StreamingResponse:
 
     voice = voices[req.voice_id]
 
-    # Resolve model — default to edge-tts
+    # Resolve model — default / fallback to edge-tts
+    available = engine_manager.get_available_models()
     model_name = req.model if req.model != "auto" else "edge-tts"
 
+    if model_name != "edge-tts" and model_name not in available:
+        logger.warning(
+            "Requested model '%s' is not available, falling back to edge-tts.",
+            model_name,
+        )
+        model_name = "edge-tts"
+
+    # Refresh the module-level list so /v1/health stays accurate
+    global AVAILABLE_MODELS
+    AVAILABLE_MODELS = available
+
+    # ----- edge-tts (async) path -----
     if model_name == "edge-tts":
-        try:
-            edge_voice = _get_edge_voice(req.language, req.emotion)
-            rate = _speed_to_rate_str(req.speed)
+        return await _handle_edge_tts(req)
 
-            audio_bytes = await _synthesize_with_edge_tts(
+    # ----- open-source model (sync) path -----
+    return await _handle_open_source_model(req, model_name, voice)
+
+
+# ---------------------------------------------------------------------------
+# Per-engine handler helpers
+# ---------------------------------------------------------------------------
+
+
+async def _handle_edge_tts(req: TTSRequest) -> StreamingResponse:
+    """Synthesize via Edge-TTS and return a streaming MP3 response."""
+    try:
+        edge_voice = _get_edge_voice(req.language, req.emotion)
+        rate = _speed_to_rate_str(req.speed)
+
+        audio_bytes = await _synthesize_with_edge_tts(
+            text=req.text,
+            voice=edge_voice,
+            rate=rate,
+        )
+
+        if not audio_bytes:
+            raise HTTPException(
+                status_code=502,
+                detail="TTS engine returned empty audio. Please try again.",
+            )
+
+        return StreamingResponse(
+            io.BytesIO(audio_bytes),
+            media_type="audio/mpeg",
+            headers={
+                "X-Model-Used": "edge-tts",
+                "X-Voice-Used": edge_voice,
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Edge-TTS synthesis failed: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail="TTS synthesis failed. Please try again later.",
+        )
+
+
+async def _handle_open_source_model(
+    req: TTSRequest,
+    model_name: str,
+    voice: Any,
+) -> StreamingResponse:
+    """Synthesize via an open-source model (xtts-v2, fish-speech, chattts).
+
+    The actual synthesis is CPU/GPU-bound so it is run in a thread pool
+    to avoid blocking the event loop.  On failure the server falls back
+    to edge-tts automatically.
+    """
+    speaker_wav: str | None = getattr(voice, "file_path", None)
+
+    try:
+        loop = asyncio.get_running_loop()
+        audio_bytes: bytes = await loop.run_in_executor(
+            None,
+            lambda: engine_manager.synthesize(
+                model_name=model_name,
                 text=req.text,
-                voice=edge_voice,
-                rate=rate,
-            )
+                speaker_wav_path=speaker_wav,
+                language=req.language,
+            ),
+        )
 
-            return StreamingResponse(
-                io.BytesIO(audio_bytes),
-                media_type="audio/mpeg",
-                headers={
-                    "X-Model-Used": "edge-tts",
-                    "X-Voice-Used": edge_voice,
-                },
-            )
-        except Exception as e:
-            # Fall back to sine wave if edge-tts fails
-            print(f"[TTS] Edge-TTS failed, falling back to sine wave: {e}")
+        if not audio_bytes:
+            raise RuntimeError("Engine returned empty audio.")
 
-    # Fallback: sine wave
-    duration = max(1.0, min(30.0, len(req.text) * 0.15))
-    frequency = 440.0 * req.speed
-    wav_bytes = _generate_sine_wav(frequency=frequency, duration=duration)
-
-    return StreamingResponse(
-        io.BytesIO(wav_bytes),
-        media_type="audio/wav",
-        headers={"X-Model-Used": "sine-placeholder"},
-    )
+        return StreamingResponse(
+            io.BytesIO(audio_bytes),
+            media_type="audio/wav",
+            headers={
+                "X-Model-Used": model_name,
+            },
+        )
+    except Exception as e:
+        logger.warning(
+            "%s synthesis failed (%s), falling back to edge-tts.", model_name, e,
+        )
+        return await _handle_edge_tts(req)

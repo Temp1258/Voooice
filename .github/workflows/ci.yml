@@ -19,7 +19,7 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run lint
 
-  test:
+  frontend-test:
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
     steps:
@@ -31,9 +31,40 @@ jobs:
       - run: npm ci
       - run: npm test -- --reporter=verbose
 
+  backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm test -- --forceExit --detectOpenHandles
+    env:
+      NODE_ENV: test
+      JWT_SECRET: test-secret-for-ci
+
+  tts-server-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tts-server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+      - run: python -c "from app.main import app; print('FastAPI app OK')"
+      - run: python -c "from app.models.engine_manager import get_available_models; print('Models:', get_available_models())"
+
   build:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [frontend-test, backend-test, tts-server-check]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,16 +79,29 @@ jobs:
           path: dist/
           retention-days: 7
 
-  backend-check:
+  security-audit:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tts-server
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
-      - run: pip install -r requirements.txt
-      - run: python -c "from app.main import app; print('FastAPI app OK')"
+          node-version: '20'
+          cache: 'npm'
+      - run: npm audit --audit-level=high || true
+      - name: Check for secrets in code
+        run: |
+          ! grep -rn "ELEVENLABS_API_KEY\s*=" --include="*.ts" --include="*.tsx" --include="*.js" src/ || true
+          ! grep -rn "password.*=.*['\"]" --include="*.ts" --include="*.tsx" --include="*.js" src/ || true
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build frontend image
+        run: docker build -t voooice-frontend .
+      - name: Build backend image
+        run: docker build -t voooice-backend ./server
+      - name: Build TTS image
+        run: docker build -t voooice-tts ./tts-server
