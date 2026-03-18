@@ -28,7 +28,7 @@ export interface SynthesisResult {
   duration: number;
 }
 
-export type AppView = 'home' | 'record' | 'voiceprints' | 'speak' | 'marketplace' | 'settings' | 'realtime' | 'training' | 'audiobook' | 'dialogue' | 'apidocs' | 'pricing' | 'voicebank';
+export type AppView = 'home' | 'record' | 'voiceprints' | 'speak' | 'marketplace' | 'settings' | 'realtime' | 'training' | 'audiobook' | 'dialogue' | 'apidocs' | 'pricing' | 'voicebank' | 'voicecard' | 'timecapsule';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'done' | 'error';
 
@@ -72,14 +72,6 @@ export interface MarketplaceVoice {
 }
 
 export type EmotionType = 'neutral' | 'happy' | 'sad' | 'angry' | 'excited' | 'calm';
-
-export interface SynthesisOptions {
-  language: string;
-  emotion: EmotionType;
-  speed: number;
-  stability: number;
-  similarity: number;
-}
 
 // Audiobook Workbench types
 export interface AudioBook {

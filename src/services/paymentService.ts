@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+import { API_BASE_URL } from '../config';
+
+const API_BASE = API_BASE_URL;
 
 export interface Order {
   id: string;
@@ -25,7 +27,7 @@ export interface PlanInfo {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('vocaltext_auth_token');
+  const token = localStorage.getItem('voooice_auth_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };

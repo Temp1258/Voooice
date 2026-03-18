@@ -5,16 +5,8 @@ const crypto = require('crypto');
 const { getDb } = require('../db');
 const { authMiddleware } = require('../middleware/auth');
 
-// Import PLANS from subscription routes to stay in sync
-const PLANS = {
-  free: { price: 0, priceYearly: 0 },
-  creator: { price: 29.9, priceYearly: 299 },
-  voicebank: { price: 99, priceYearly: 99, pricePermanent: 199 },
-  studio: { price: 299, priceYearly: 2999 },
-  // Backward compatibility
-  pro: { price: 29.9, priceYearly: 299 },
-  enterprise: { price: 99.9, priceYearly: 999 },
-};
+// Shared plan config — single source of truth
+const { PLANS } = require('./plans');
 
 // Ensure orders table exists
 function ensureOrdersTable() {
@@ -38,6 +30,85 @@ function ensureOrdersTable() {
 }
 
 ensureOrdersTable();
+
+// Verify Stripe webhook signature
+function verifyStripeSignature(req) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET not configured');
+  }
+
+  const signature = req.headers['stripe-signature'];
+  if (!signature) {
+    throw new Error('Missing stripe-signature header');
+  }
+
+  // Parse Stripe signature header: t=timestamp,v1=signature
+  const parts = {};
+  for (const item of signature.split(',')) {
+    const [key, value] = item.split('=');
+    parts[key] = value;
+  }
+
+  if (!parts.t || !parts.v1) {
+    throw new Error('Invalid stripe-signature format');
+  }
+
+  const timestamp = parts.t;
+  const expectedSig = parts.v1;
+
+  // Verify timestamp is within 5 minutes
+  const tolerance = 300; // 5 minutes
+  const currentTime = Math.floor(Date.now() / 1000);
+  if (Math.abs(currentTime - parseInt(timestamp)) > tolerance) {
+    throw new Error('Webhook timestamp too old');
+  }
+
+  // Compute expected signature
+  const payload = `${timestamp}.${JSON.stringify(req.body)}`;
+  const computedSig = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+
+  if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(computedSig))) {
+    throw new Error('Invalid webhook signature');
+  }
+
+  return true;
+}
+
+// Transactional payment processing — ensures atomicity
+function processPayment(db, orderId, plan) {
+  const processPaymentTx = db.transaction(() => {
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+    if (!order) throw new Error('Order not found');
+    if (order.status === 'paid') return order; // Idempotent
+
+    const now = Date.now();
+    // Use yearly billing for yearly plans
+    const planInfo = PLANS[plan];
+    const durationMs = (planInfo && planInfo.pricePermanent)
+      ? 365 * 24 * 60 * 60 * 1000
+      : 30 * 24 * 60 * 60 * 1000;
+    const expiresAt = now + durationMs;
+
+    db.prepare('UPDATE orders SET status = ?, paid_at = ?, expires_at = ?, payment_id = ? WHERE id = ?')
+      .run('paid', now, expiresAt, 'stripe_' + orderId, orderId);
+
+    db.prepare(`
+      INSERT INTO subscriptions (user_id, plan, started_at, expires_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET plan = excluded.plan, started_at = excluded.started_at, expires_at = excluded.expires_at
+    `).run(order.user_id, order.plan, now, expiresAt);
+
+    db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(order.plan, order.user_id);
+
+    return order;
+  });
+
+  return processPaymentTx();
+}
 
 // POST /api/payment/create-order
 router.post('/payment/create-order', authMiddleware, (req, res) => {
@@ -67,22 +138,16 @@ router.post('/payment/create-order', authMiddleware, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
     `).run(orderId, req.user.id, plan, amount, currency, paymentMethod, Date.now());
 
-    if (paymentMethod === 'stripe') {
-      return res.json({
-        orderId,
-        clientSecret: 'mock_secret_' + orderId,
-        amount,
-        currency,
-      });
-    } else {
-      // WeChat or Alipay
-      return res.json({
-        orderId,
-        paymentUrl: 'https://pay.example.com/mock/' + orderId,
-        amount,
-        currency,
-      });
-    }
+    // In production, integrate with actual payment processor here
+    // Stripe: create PaymentIntent and return clientSecret
+    // WeChat/Alipay: create payment URL via provider SDK
+    return res.json({
+      orderId,
+      amount,
+      currency,
+      paymentMethod,
+      status: 'pending',
+    });
   } catch (err) {
     console.error('Create order error:', err);
     res.status(500).json({ error: 'Failed to create order' });
@@ -90,9 +155,23 @@ router.post('/payment/create-order', authMiddleware, (req, res) => {
 });
 
 // POST /api/payment/webhook/stripe (no auth - webhook from Stripe)
+// SECURITY: Signature verification required
 router.post('/payment/webhook/stripe', (req, res) => {
   try {
     const db = getDb();
+
+    // SECURITY: Always require webhook signature verification
+    if (!process.env.STRIPE_WEBHOOK_SECRET) {
+      console.error('STRIPE_WEBHOOK_SECRET not set — rejecting webhook');
+      return res.status(503).json({ error: 'Webhook not configured. Set STRIPE_WEBHOOK_SECRET.' });
+    }
+    try {
+      verifyStripeSignature(req);
+    } catch (sigErr) {
+      console.error('Stripe webhook signature verification failed:', sigErr.message);
+      return res.status(401).json({ error: 'Invalid webhook signature' });
+    }
+
     const { orderId, status } = req.body;
 
     if (!orderId || !status) {
@@ -109,19 +188,7 @@ router.post('/payment/webhook/stripe', (req, res) => {
     }
 
     if (status === 'succeeded') {
-      const now = Date.now();
-      const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // 30 days
-
-      db.prepare('UPDATE orders SET status = ?, paid_at = ?, expires_at = ?, payment_id = ? WHERE id = ?')
-        .run('paid', now, expiresAt, 'stripe_' + orderId, orderId);
-
-      db.prepare(`
-        INSERT INTO subscriptions (user_id, plan, started_at, expires_at)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(user_id) DO UPDATE SET plan = excluded.plan, started_at = excluded.started_at, expires_at = excluded.expires_at
-      `).run(order.user_id, order.plan, now, expiresAt);
-
-      db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(order.plan, order.user_id);
+      processPayment(db, orderId, order.plan);
     } else {
       db.prepare('UPDATE orders SET status = ? WHERE id = ?').run('failed', orderId);
     }
@@ -133,8 +200,13 @@ router.post('/payment/webhook/stripe', (req, res) => {
   }
 });
 
-// POST /api/payment/confirm (auth required - for dev/testing)
+// POST /api/payment/confirm (auth required)
+// SECURITY: Only available in development mode
 router.post('/payment/confirm', authMiddleware, (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'This endpoint is disabled in production' });
+  }
+
   try {
     const db = getDb();
     const { orderId } = req.body;
@@ -152,24 +224,11 @@ router.post('/payment/confirm', authMiddleware, (req, res) => {
       return res.status(400).json({ error: `Order is already ${order.status}` });
     }
 
-    const now = Date.now();
-    const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // 30 days
-
-    db.prepare('UPDATE orders SET status = ?, paid_at = ?, expires_at = ? WHERE id = ?')
-      .run('paid', now, expiresAt, orderId);
-
-    db.prepare(`
-      INSERT INTO subscriptions (user_id, plan, started_at, expires_at)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(user_id) DO UPDATE SET plan = excluded.plan, started_at = excluded.started_at, expires_at = excluded.expires_at
-    `).run(req.user.id, order.plan, now, expiresAt);
-
-    db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(order.plan, req.user.id);
+    processPayment(db, orderId, order.plan);
 
     res.json({
       success: true,
       plan: order.plan,
-      expiresAt,
     });
   } catch (err) {
     console.error('Confirm order error:', err);

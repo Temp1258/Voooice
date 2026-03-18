@@ -1,5 +1,5 @@
 """
-Pydantic models for the VocalText Local TTS Server API.
+Pydantic models for the Voooice Local TTS Server API.
 """
 
 from __future__ import annotations
@@ -12,14 +12,14 @@ from pydantic import BaseModel, Field
 class TTSRequest(BaseModel):
     """Request body for the ``POST /v1/tts`` endpoint."""
 
-    text: str
-    voice_id: str
-    model: str = "auto"
-    language: str = "zh-CN"
-    emotion: str = "neutral"
-    speed: float = 1.0
-    stability: float = 0.5
-    similarity: float = 0.75
+    text: str = Field(..., min_length=1, max_length=10000)
+    voice_id: str = Field(..., min_length=1)
+    model: str = Field(default="auto", pattern=r"^(auto|edge-tts|xtts-v2|fish-speech|chattts)$")
+    language: str = Field(default="zh-CN", min_length=2, max_length=10)
+    emotion: str = Field(default="neutral", pattern=r"^(neutral|happy|sad|angry|excited|calm)$")
+    speed: float = Field(default=1.0, ge=0.25, le=4.0)
+    stability: float = Field(default=0.5, ge=0.0, le=1.0)
+    similarity: float = Field(default=0.75, ge=0.0, le=1.0)
 
 
 class TTSResponse(BaseModel):
@@ -65,3 +65,12 @@ class HealthResponse(BaseModel):
     status: str
     models: list[str]
     gpu: bool
+
+
+class EdgeVoiceInfo(BaseModel):
+    """An available Edge-TTS neural voice."""
+
+    short_name: str
+    friendly_name: str
+    locale: str
+    gender: str

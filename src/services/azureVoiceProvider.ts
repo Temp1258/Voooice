@@ -161,7 +161,7 @@ export class AzureVoiceProvider implements VoiceCloneProvider {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/ssml+xml',
         'X-Microsoft-OutputFormat': 'audio-24khz-96kbitrate-mono-mp3',
-        'User-Agent': 'VocalText/1.0',
+        'User-Agent': 'Voooice/1.0',
       },
       body: ssml,
     });

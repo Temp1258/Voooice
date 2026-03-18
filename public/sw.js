@@ -1,14 +1,15 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'vocaltext-v1';
+const CACHE_NAME = 'voooice-v1';
 const PENDING_UPLOADS_STORE = 'pendingUploads';
-const DB_NAME = 'VocalTextDB';
+const DB_NAME = 'VoooiceDB';
 const DB_VERSION = 2;
 
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/vite.svg',
 ];
 
 const STATIC_EXTENSIONS = ['.js', '.css', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.woff', '.woff2', '.ttf', '.eot'];
@@ -178,7 +179,7 @@ self.addEventListener('sync', (event) => {
 /**
  * Open the app's IndexedDB, ensuring the pendingUploads store exists.
  * We use a separate DB version namespace to avoid conflicts with the
- * main app DB migrations — instead we open VocalTextDB at the current
+ * main app DB migrations — instead we open VoooiceDB at the current
  * version and create the store only if it doesn't exist during upgrades.
  *
  * For simplicity in the SW context (which cannot import the app's openDB),
@@ -186,7 +187,7 @@ self.addEventListener('sync', (event) => {
  */
 function openSyncDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('VocalTextSyncDB', 1);
+    const request = indexedDB.open('VoooiceSyncDB', 1);
 
     request.onupgradeneeded = () => {
       const db = request.result;

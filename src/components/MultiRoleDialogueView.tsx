@@ -171,7 +171,7 @@ export function MultiRoleDialogueView({ voicePrints }: MultiRoleDialogueViewProp
     if (blobs.length === 0) return;
     const combined = new Blob(blobs, { type: 'audio/wav' });
     const timestamp = new Date().toISOString().slice(0, 10);
-    downloadBlob(combined, `VocalText_Dialogue_${timestamp}.wav`);
+    downloadBlob(combined, `Voooice_Dialogue_${timestamp}.wav`);
   };
 
   const getVoiceColor = (vpId: string): string => {

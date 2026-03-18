@@ -4,7 +4,7 @@ import enUS from './locales/en-US';
 
 export type Locale = 'zh-CN' | 'en-US';
 
-const LOCALE_STORAGE_KEY = 'vocaltext-locale';
+const LOCALE_STORAGE_KEY = 'voooice-locale';
 
 const translations: Record<Locale, Record<string, string>> = {
   'zh-CN': zhCN,

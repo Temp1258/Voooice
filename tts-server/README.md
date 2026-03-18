@@ -1,4 +1,4 @@
-# VocalText Local TTS Server
+# Voooice Local TTS Server
 
 A self-hosted TTS server that provides voice cloning and speech synthesis through a REST API.
 
@@ -26,14 +26,14 @@ The server will be available at `http://localhost:8000`. Verify it is running by
 ## Docker
 
 ```bash
-docker build -t vocaltext-tts .
-docker run -p 8000:8000 vocaltext-tts
+docker build -t voooice-tts .
+docker run -p 8000:8000 voooice-tts
 ```
 
 For GPU support, use `--gpus all`:
 
 ```bash
-docker run --gpus all -p 8000:8000 vocaltext-tts
+docker run --gpus all -p 8000:8000 voooice-tts
 ```
 
 ## Project Structure

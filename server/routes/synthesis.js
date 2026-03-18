@@ -3,12 +3,27 @@ const fetch = require('node-fetch');
 const multer = require('multer');
 const FormData = require('form-data');
 const { authenticateToken } = require('../middleware/auth');
+const { enforceQuota } = require('./subscription');
 
 const router = express.Router();
 
+const ALLOWED_AUDIO_TYPES = [
+  'audio/wav', 'audio/x-wav', 'audio/wave',
+  'audio/mp3', 'audio/mpeg',
+  'audio/ogg', 'audio/webm',
+  'audio/mp4', 'audio/m4a',
+];
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_AUDIO_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Invalid audio file type: ${file.mimetype}`));
+    }
+  },
 });
 
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1';
@@ -16,18 +31,23 @@ const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1';
 function getApiKey() {
   const key = process.env.ELEVENLABS_API_KEY;
   if (!key) {
-    throw new Error('ELEVENLABS_API_KEY environment variable is not set');
+    throw new Error('TTS service not configured');
   }
   return key;
 }
 
 // POST /api/synthesis — proxy to ElevenLabs text-to-speech
-router.post('/', authenticateToken, async (req, res) => {
+// SECURITY: Quota enforcement + sanitized error responses
+router.post('/', authenticateToken, enforceQuota, async (req, res) => {
   try {
     const { text, voiceId, language, emotion, speed, stability, similarity } = req.body;
 
     if (!text || !voiceId) {
       return res.status(400).json({ error: 'text and voiceId are required' });
+    }
+
+    if (typeof text !== 'string' || text.length > 10000) {
+      return res.status(400).json({ error: 'Text must be a string of 10000 characters or fewer' });
     }
 
     const apiKey = getApiKey();
@@ -66,20 +86,30 @@ router.post('/', authenticateToken, async (req, res) => {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ElevenLabs TTS error:', response.status, errorText);
-      return res.status(response.status).json({
-        error: 'ElevenLabs API error',
-        details: errorText,
-      });
+      // SECURITY: Don't expose third-party API error details to client
+      const status = response.status;
+      console.error('ElevenLabs TTS error:', status);
+      if (status === 401 || status === 403) {
+        return res.status(503).json({ error: 'TTS service authentication error' });
+      }
+      if (status === 429) {
+        return res.status(429).json({ error: 'TTS service rate limit exceeded. Please try again later.' });
+      }
+      return res.status(502).json({ error: 'TTS service temporarily unavailable' });
     }
+
+    // Record usage after successful synthesis
+    const { getDb } = require('../db');
+    const db = getDb();
+    db.prepare('INSERT INTO usage_log (user_id, action, characters, created_at) VALUES (?, ?, ?, ?)')
+      .run(req.user.id, 'synthesis', text.length, Date.now());
 
     res.set('Content-Type', 'audio/mpeg');
     const arrayBuffer = await response.arrayBuffer();
     res.send(Buffer.from(arrayBuffer));
   } catch (err) {
     console.error('Synthesis error:', err);
-    if (err.message.includes('ELEVENLABS_API_KEY')) {
+    if (err.message === 'TTS service not configured') {
       return res.status(503).json({ error: err.message });
     }
     res.status(500).json({ error: 'Internal server error' });
@@ -101,10 +131,15 @@ router.post('/voices/clone', authenticateToken, upload.single('audio'), async (r
 
     const apiKey = getApiKey();
 
+    // Sanitize filename
+    const safeFilename = (req.file.originalname || 'audio.wav')
+      .replace(/[^\w.-]/g, '_')
+      .slice(0, 100);
+
     const formData = new FormData();
     formData.append('name', name);
     formData.append('files', req.file.buffer, {
-      filename: req.file.originalname || 'audio.wav',
+      filename: safeFilename,
       contentType: req.file.mimetype || 'audio/wav',
     });
 
@@ -118,19 +153,16 @@ router.post('/voices/clone', authenticateToken, upload.single('audio'), async (r
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ElevenLabs clone error:', response.status, errorText);
-      return res.status(response.status).json({
-        error: 'ElevenLabs API error',
-        details: errorText,
-      });
+      const status = response.status;
+      console.error('ElevenLabs clone error:', status);
+      return res.status(502).json({ error: 'Voice cloning service temporarily unavailable' });
     }
 
     const data = await response.json();
     res.json({ voice_id: data.voice_id });
   } catch (err) {
     console.error('Voice clone error:', err);
-    if (err.message.includes('ELEVENLABS_API_KEY')) {
+    if (err.message === 'TTS service not configured') {
       return res.status(503).json({ error: err.message });
     }
     res.status(500).json({ error: 'Internal server error' });
@@ -143,25 +175,19 @@ router.get('/voices', authenticateToken, async (req, res) => {
     const apiKey = getApiKey();
 
     const response = await fetch(`${ELEVENLABS_BASE}/voices`, {
-      headers: {
-        'xi-api-key': apiKey,
-      },
+      headers: { 'xi-api-key': apiKey },
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ElevenLabs list voices error:', response.status, errorText);
-      return res.status(response.status).json({
-        error: 'ElevenLabs API error',
-        details: errorText,
-      });
+      console.error('ElevenLabs list voices error:', response.status);
+      return res.status(502).json({ error: 'Voice service temporarily unavailable' });
     }
 
     const data = await response.json();
     res.json(data);
   } catch (err) {
     console.error('List voices error:', err);
-    if (err.message.includes('ELEVENLABS_API_KEY')) {
+    if (err.message === 'TTS service not configured') {
       return res.status(503).json({ error: err.message });
     }
     res.status(500).json({ error: 'Internal server error' });
@@ -175,24 +201,18 @@ router.delete('/voices/:id', authenticateToken, async (req, res) => {
 
     const response = await fetch(`${ELEVENLABS_BASE}/voices/${encodeURIComponent(req.params.id)}`, {
       method: 'DELETE',
-      headers: {
-        'xi-api-key': apiKey,
-      },
+      headers: { 'xi-api-key': apiKey },
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ElevenLabs delete voice error:', response.status, errorText);
-      return res.status(response.status).json({
-        error: 'ElevenLabs API error',
-        details: errorText,
-      });
+      console.error('ElevenLabs delete voice error:', response.status);
+      return res.status(502).json({ error: 'Voice service temporarily unavailable' });
     }
 
     res.json({ message: 'Voice deleted' });
   } catch (err) {
     console.error('Delete voice error:', err);
-    if (err.message.includes('ELEVENLABS_API_KEY')) {
+    if (err.message === 'TTS service not configured') {
       return res.status(503).json({ error: err.message });
     }
     res.status(500).json({ error: 'Internal server error' });

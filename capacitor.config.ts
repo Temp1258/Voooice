@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.vocaltext.app',
-  appName: 'VocalText',
+  appId: 'com.voooice.app',
+  appName: 'Voooice',
   webDir: 'dist',
   ios: {
-    scheme: 'VocalText',
+    scheme: 'Voooice',
     allowsLinkPreview: false,
   },
   plugins: {

@@ -1,0 +1,21 @@
+{
+  "name": "Voooice - 声音克隆",
+  "short_name": "Voooice",
+  "description": "录制你的声音，创建专属声纹，用你的声音朗读任何文字",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "entertainment"],
+  "lang": "zh-CN",
+  "scope": "/"
+}

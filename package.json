@@ -9,12 +9,18 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@sentry/react": "^10.44.0",
+    "lamejs": "^1.2.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.13.1",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
