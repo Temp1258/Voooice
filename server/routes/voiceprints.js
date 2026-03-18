@@ -15,6 +15,31 @@ const ALLOWED_AUDIO_TYPES = [
   'audio/aac',
 ];
 
+// Audio file magic byte signatures for content validation
+const AUDIO_MAGIC_BYTES = [
+  { prefix: Buffer.from('RIFF'), name: 'WAV' },         // WAV
+  { prefix: Buffer.from([0xFF, 0xFB]), name: 'MP3' },   // MP3 (frame sync)
+  { prefix: Buffer.from([0xFF, 0xF3]), name: 'MP3' },   // MP3 (frame sync)
+  { prefix: Buffer.from([0xFF, 0xF2]), name: 'MP3' },   // MP3 (frame sync)
+  { prefix: Buffer.from([0x49, 0x44, 0x33]), name: 'MP3-ID3' }, // MP3 with ID3 tag
+  { prefix: Buffer.from('OggS'), name: 'OGG' },         // OGG
+  { prefix: Buffer.from([0x1A, 0x45, 0xDF, 0xA3]), name: 'WebM' }, // WebM/Matroska
+  { prefix: Buffer.from('ftyp'), offset: 4, name: 'MP4' }, // MP4/M4A (ftyp at offset 4)
+  { prefix: Buffer.from('fLaC'), name: 'FLAC' },        // FLAC
+];
+
+function validateAudioMagicBytes(buffer) {
+  if (!buffer || buffer.length < 12) return false;
+  for (const sig of AUDIO_MAGIC_BYTES) {
+    const offset = sig.offset || 0;
+    if (buffer.length >= offset + sig.prefix.length) {
+      const slice = buffer.subarray(offset, offset + sig.prefix.length);
+      if (slice.equals(sig.prefix)) return true;
+    }
+  }
+  return false;
+}
+
 // Configure multer with file type validation
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -136,6 +161,11 @@ router.post('/audio/:id', authenticateToken, upload.single('audio'), (req, res) 
 
     if (!req.file) {
       return res.status(400).json({ error: 'No audio file provided' });
+    }
+
+    // SECURITY: Validate actual file content (magic bytes), not just MIME header
+    if (!validateAudioMagicBytes(req.file.buffer)) {
+      return res.status(415).json({ error: 'File content does not match a supported audio format' });
     }
 
     db.prepare(

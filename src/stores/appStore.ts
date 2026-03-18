@@ -65,17 +65,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   providerInitialized: false,
   initProvider: () => {
     if (get().providerInitialized) return;
+    // SECURITY: Always clean up any API keys previously stored in localStorage
+    if (localStorage.getItem('voooice_api_key')) {
+      const migratedKey = localStorage.getItem('voooice_api_key')!;
+      sessionStorage.setItem('voooice_api_key', migratedKey);
+      localStorage.removeItem('voooice_api_key');
+    }
+
     const savedProvider = localStorage.getItem('voooice_provider');
     if (savedProvider === 'local') {
       voiceCloneService.setLocalProvider();
     } else {
-      const savedKey = sessionStorage.getItem('voooice_api_key') || localStorage.getItem('voooice_api_key');
+      // SECURITY: Only use sessionStorage for API keys (cleared on tab close)
+      const savedKey = sessionStorage.getItem('voooice_api_key');
       if (savedKey) {
         voiceCloneService.setApiKey(savedKey);
-        if (localStorage.getItem('voooice_api_key')) {
-          sessionStorage.setItem('voooice_api_key', savedKey);
-          localStorage.removeItem('voooice_api_key');
-        }
       } else {
         voiceCloneService.setLocalProvider();
       }

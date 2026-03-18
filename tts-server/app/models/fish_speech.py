@@ -123,14 +123,25 @@ class FishSpeechEngine:
         speaker_wav_path: str,
         language: str,
     ) -> bytes:
-        """Run Fish Speech via its command-line interface as a fallback."""
+        """Run Fish Speech via its command-line interface as a fallback.
+
+        SECURITY: Text is written to a temp file rather than passed as a CLI
+        argument to prevent command injection.
+        """
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
+
+        # Write user text to a temp file to avoid passing it on the command line
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8",
+        ) as text_file:
+            text_file.write(text)
+            text_file_path = text_file.name
 
         try:
             cmd = [
                 "python", "-m", "fish_speech.inference",
-                "--text", text,
+                "--text-file", text_file_path,
                 "--reference-audio", speaker_wav_path,
                 "--output", tmp_path,
                 "--model-dir", str(self.model_dir),
@@ -141,11 +152,14 @@ class FishSpeechEngine:
                 text=True,
                 timeout=120,
                 check=False,
+                # SECURITY: Never use shell=True with user input
+                shell=False,
             )
             if result.returncode != 0:
-                logger.error("Fish Speech CLI failed: %s", result.stderr)
-                raise RuntimeError(f"Fish Speech synthesis failed: {result.stderr}")
+                logger.error("Fish Speech CLI failed: %s", result.stderr[:500])
+                raise RuntimeError("Fish Speech synthesis failed")
 
             return Path(tmp_path).read_bytes()
         finally:
             Path(tmp_path).unlink(missing_ok=True)
+            Path(text_file_path).unlink(missing_ok=True)

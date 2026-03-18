@@ -124,6 +124,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // Routes (with tighter limits on expensive operations)
+// Auth: 10 requests per minute per IP to prevent brute-force
+app.use('/api/auth', rateLimit({ windowMs: 60000, max: 10, message: 'Too many authentication attempts. Please try again later.' }));
 app.use('/api/auth', authRoutes);
 app.use('/api', voiceprintRoutes);
 app.use('/api/synthesize', rateLimit({ windowMs: 60000, max: 10, message: 'Synthesis rate limit exceeded' }));

@@ -9,9 +9,16 @@ const router = express.Router();
 
 // Shorter token lifetime for security; use refresh endpoint for renewal
 const TOKEN_EXPIRY = '2h';
+const TOKEN_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours in ms
 
 function generateToken(userId) {
   return jwt.sign({ userId, iat: Math.floor(Date.now() / 1000) }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+}
+
+function tokenResponse(userId, user) {
+  const token = generateToken(userId);
+  const expiresAt = Date.now() + TOKEN_EXPIRY_MS;
+  return { token, expiresAt, user };
 }
 
 // Password validation: min 8 chars, at least 1 uppercase, 1 lowercase, 1 number
@@ -67,20 +74,15 @@ router.post('/signup', async (req, res) => {
       throw err;
     }
 
-    const token = generateToken(id);
-
-    res.status(201).json({
-      token,
-      user: {
-        id,
-        email: email.toLowerCase().trim(),
-        display_name: displayName || null,
-        plan: 'free',
-        voice_quota: 5,
-        used_quota: 0,
-        created_at,
-      },
-    });
+    res.status(201).json(tokenResponse(id, {
+      id,
+      email: email.toLowerCase().trim(),
+      display_name: displayName || null,
+      plan: 'free',
+      voice_quota: 5,
+      used_quota: 0,
+      created_at,
+    }));
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -119,20 +121,15 @@ router.post('/login', async (req, res) => {
     // Successful login — clear attempts
     recordLoginAttempt(normalizedEmail, true);
 
-    const token = generateToken(user.id);
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        display_name: user.display_name,
-        plan: user.plan,
-        voice_quota: user.voice_quota,
-        used_quota: user.used_quota,
-        created_at: user.created_at,
-      },
-    });
+    res.json(tokenResponse(user.id, {
+      id: user.id,
+      email: user.email,
+      display_name: user.display_name,
+      plan: user.plan,
+      voice_quota: user.voice_quota,
+      used_quota: user.used_quota,
+      created_at: user.created_at,
+    }));
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -152,8 +149,7 @@ router.get('/me', authenticateToken, (req, res) => {
 // POST /api/auth/refresh
 router.post('/refresh', authenticateToken, (req, res) => {
   try {
-    const token = generateToken(req.user.id);
-    res.json({ token, user: req.user });
+    res.json(tokenResponse(req.user.id, req.user));
   } catch (err) {
     console.error('Refresh error:', err);
     res.status(500).json({ error: 'Internal server error' });

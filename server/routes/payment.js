@@ -138,21 +138,16 @@ router.post('/payment/create-order', authMiddleware, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
     `).run(orderId, req.user.id, plan, amount, currency, paymentMethod, Date.now());
 
-    if (paymentMethod === 'stripe') {
-      return res.json({
-        orderId,
-        clientSecret: 'mock_secret_' + orderId,
-        amount,
-        currency,
-      });
-    } else {
-      return res.json({
-        orderId,
-        paymentUrl: 'https://pay.example.com/mock/' + orderId,
-        amount,
-        currency,
-      });
-    }
+    // In production, integrate with actual payment processor here
+    // Stripe: create PaymentIntent and return clientSecret
+    // WeChat/Alipay: create payment URL via provider SDK
+    return res.json({
+      orderId,
+      amount,
+      currency,
+      paymentMethod,
+      status: 'pending',
+    });
   } catch (err) {
     console.error('Create order error:', err);
     res.status(500).json({ error: 'Failed to create order' });
@@ -165,17 +160,16 @@ router.post('/payment/webhook/stripe', (req, res) => {
   try {
     const db = getDb();
 
-    // Verify webhook signature in production
-    if (process.env.STRIPE_WEBHOOK_SECRET) {
-      try {
-        verifyStripeSignature(req);
-      } catch (sigErr) {
-        console.error('Stripe webhook signature verification failed:', sigErr.message);
-        return res.status(401).json({ error: 'Invalid webhook signature' });
-      }
-    } else if (process.env.NODE_ENV === 'production') {
-      console.error('STRIPE_WEBHOOK_SECRET not set in production — rejecting webhook');
-      return res.status(500).json({ error: 'Webhook not configured' });
+    // SECURITY: Always require webhook signature verification
+    if (!process.env.STRIPE_WEBHOOK_SECRET) {
+      console.error('STRIPE_WEBHOOK_SECRET not set — rejecting webhook');
+      return res.status(503).json({ error: 'Webhook not configured. Set STRIPE_WEBHOOK_SECRET.' });
+    }
+    try {
+      verifyStripeSignature(req);
+    } catch (sigErr) {
+      console.error('Stripe webhook signature verification failed:', sigErr.message);
+      return res.status(401).json({ error: 'Invalid webhook signature' });
     }
 
     const { orderId, status } = req.body;
