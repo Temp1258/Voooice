@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, X, Crown, Sparkles } from 'lucide-react';
+import { Check, Crown, Sparkles } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 interface PricingViewProps {

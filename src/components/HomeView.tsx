@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, MessageSquare, Users, ChevronRight, BookOpen, GraduationCap, MessageCircle, Heart, Send, Clock, Radio } from 'lucide-react';
+import { Mic, MessageSquare, Users, ChevronRight, BookOpen, GraduationCap, MessageCircle, Heart, Send, Clock } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { AppView, VoicePrint } from '../types';
 

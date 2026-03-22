@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { AudiobookProvider, useAudiobook } from './audiobook/AudiobookContext';
-import type { WorkbenchTab } from './audiobook/AudiobookContext';
 import { ProjectTab } from './audiobook/ProjectTab';
 import { EditorTab } from './audiobook/EditorTab';
 import { RolesTab } from './audiobook/RolesTab';

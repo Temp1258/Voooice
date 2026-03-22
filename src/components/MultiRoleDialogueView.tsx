@@ -161,7 +161,7 @@ export function MultiRoleDialogueView({ voicePrints }: MultiRoleDialogueViewProp
     setIsPlaying(false);
     speechSynthesis.cancel();
     if (sourceRef.current) {
-      try { sourceRef.current.stop(); } catch {}
+      try { sourceRef.current.stop(); } catch { /* ignore */ }
     }
     setCurrentLineIndex(-1);
   };
