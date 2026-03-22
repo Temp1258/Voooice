@@ -96,9 +96,10 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
           }
         }, 200);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Synthesis failed:', err);
-      setError(t('error.synthesisFailed') + ': ' + (err.message || t('error.unknown')));
+      const message = err instanceof Error ? err.message : t('error.unknown');
+      setError(t('error.synthesisFailed') + ': ' + message);
       setSpeakingState('error');
     }
   };
@@ -128,7 +129,7 @@ export function SpeakView({ voicePrints }: SpeakViewProps) {
   const handleStop = () => {
     speechSynthesis.cancel();
     if (sourceRef.current) {
-      try { sourceRef.current.stop(); } catch {}
+      try { sourceRef.current.stop(); } catch { /* ignore */ }
     }
     setSpeakingState('idle');
   };

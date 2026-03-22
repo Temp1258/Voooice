@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // We test the public interface by providing a mock provider
 // This avoids network dependencies and tests the service facade logic

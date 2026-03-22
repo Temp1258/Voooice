@@ -22,7 +22,7 @@ interface SettingsViewProps {
   onNavigateHome?: () => void;
 }
 
-export function SettingsView({ onNavigateHome }: SettingsViewProps) {
+export function SettingsView({ onNavigateHome: _onNavigateHome }: SettingsViewProps) {
   const { t } = useI18n();
   const [provider, setProvider] = useState<VoiceProvider>('elevenlabs');
   const [apiKey, setApiKey] = useState('');

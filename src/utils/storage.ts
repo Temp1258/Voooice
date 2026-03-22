@@ -167,7 +167,7 @@ function base64ToUint8(b64: string): Uint8Array {
  * Migrate a v1 voiceprint record that may still carry `audioData`.
  * Strips the field and sets `hasAudioBlob` appropriately.
  */
-function migrateV1Record(record: any): VoicePrint {
+function migrateV1Record(record: Record<string, unknown>): VoicePrint {
   if ('audioData' in record) {
     const migrated: VoicePrint = {
       id: record.id,
@@ -194,7 +194,7 @@ export async function getAllVoicePrints(): Promise<VoicePrint[]> {
     const store = tx.objectStore(VOICEPRINTS_STORE);
     const request = store.getAll();
     request.onsuccess = () => {
-      const records: any[] = request.result;
+      const records: Record<string, unknown>[] = request.result;
       resolve(records.map(migrateV1Record));
     };
     request.onerror = () => reject(request.error);
@@ -303,7 +303,7 @@ export async function getAudioBlob(id: string): Promise<Blob | null> {
   }
 
   const db = await openDB();
-  const record: any = await new Promise((resolve, reject) => {
+  const record = await new Promise<Record<string, unknown> | undefined>((resolve, reject) => {
     const tx = db.transaction(AUDIO_BLOBS_STORE, 'readonly');
     const store = tx.objectStore(AUDIO_BLOBS_STORE);
     const request = store.get(id);

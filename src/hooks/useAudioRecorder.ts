@@ -167,14 +167,16 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       timerRef.current = window.setInterval(() => {
         setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
       }, 200);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to start recording:', err);
-      if (err.name === 'NotAllowedError') {
+      const name = err instanceof Error ? err.name : '';
+      const message = err instanceof Error ? err.message : '未知错误';
+      if (name === 'NotAllowedError') {
         setError('请允许麦克风访问权限');
-      } else if (err.name === 'NotFoundError') {
+      } else if (name === 'NotFoundError') {
         setError('未找到麦克风设备');
       } else {
-        setError('录音启动失败: ' + (err.message || '未知错误'));
+        setError('录音启动失败: ' + message);
       }
       setState('error');
     }

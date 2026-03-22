@@ -10,7 +10,7 @@ interface UpgradePromptProps {
 }
 
 export function UpgradePrompt({
-  feature,
+  feature: _feature,
   requiredPlan,
   onUpgrade,
   compact = false,

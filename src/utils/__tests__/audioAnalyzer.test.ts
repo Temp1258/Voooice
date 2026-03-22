@@ -19,7 +19,7 @@ function createFakeAudioBuffer(
     length: channelData.length,
     numberOfChannels: 1,
     duration: channelData.length / sampleRate,
-    getChannelData(_channel: number) {
+    getChannelData() {
       return channelData;
     },
     copyFromChannel() {},

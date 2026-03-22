@@ -15,8 +15,6 @@ export function FrequencyProfile({
 }: FrequencyProfileProps) {
   if (!profile || profile.length === 0) return null;
 
-  const barWidth = 100 / profile.length;
-
   return (
     <div className="w-full">
       {label && (
